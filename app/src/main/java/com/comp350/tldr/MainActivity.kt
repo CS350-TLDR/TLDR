@@ -8,56 +8,69 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavController
+import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.comp350.tldr.ui.theme.COMP350TLDRTheme
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
-// Main entry point for the app
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             COMP350TLDRTheme {
-                // Set up navigation with fade transitions between screens
+                // Remember the NavController
                 val navController = rememberNavController()
 
-                NavHost(
-                    navController = navController,
-                    startDestination = "welcome_screen",
-                    enterTransition = { fadeIn(animationSpec = tween(700)) },
-                    exitTransition = { fadeOut(animationSpec = tween(700)) }
-                ) {
-                    // Define app screens here
-                    composable("welcome_screen") {
-                        WelcomeScreen(navController)
+                // Use Scaffold to create a layout with a bottom navigation bar
+                Scaffold(
+                    bottomBar = {
+                        // Only show bottom bar after welcome screen
+                        val currentRoute = currentRoute(navController)
+                        if (currentRoute != "welcome_screen") {
+                            BottomNavBar(navController)
+                        }
                     }
-                    composable("main_menu") {
-                        MainMenuScreen(navController)
+                ) { paddingValues ->
+                    // Navigation host inside scaffold with padding for the bottom bar
+                    NavHost(
+                        navController = navController,
+                        startDestination = "welcome_screen",
+                        modifier = Modifier.padding(paddingValues),
+                        enterTransition = { fadeIn(animationSpec = tween(700)) },
+                        exitTransition = { fadeOut(animationSpec = tween(700)) }
+                    ) {
+                        composable("welcome_screen") {
+                            WelcomeScreen(navController)
+                        }
+                        composable("main_menu") {
+                            MainMenuScreen(navController)
+                        }
+                        composable("profile") {
+                            ProfileScreen(navController)
+                        }
+                        // Add more screens as needed
                     }
-                    // Add your screen here using the pattern above
                 }
             }
         }
@@ -67,12 +80,5 @@ class MainActivity : ComponentActivity() {
 
 
 
-// Preview for welcome screen in Android Studio
-@Preview(showBackground = true)
-@Composable
-fun WelcomeScreenPreview() {
-    COMP350TLDRTheme {
-        val dummyNavController = rememberNavController()
-        WelcomeScreen(dummyNavController)
-    }
-}
+
+
