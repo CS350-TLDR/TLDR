@@ -69,6 +69,9 @@ class MainActivity : ComponentActivity() {
                         composable("profile") {
                             ProfileScreen(navController)
                         }
+                        composable("quiz_page") {
+                            QuizPage(navController)
+                        }
                         // Add more screens as needed
                     }
                 }

@@ -136,7 +136,7 @@ fun MainMenuScreen(navController: NavController) {
                             onClick = {
                                 showLessonDialog = false
                                 // Navigate to the lesson screen
-                                navController.navigate("lesson_screen/${selectedLesson + 1}")
+                                navController.navigate("quiz_page")//${selectedLesson + 1}")
                             },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF4CAF50) // Green
