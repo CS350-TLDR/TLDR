@@ -14,11 +14,9 @@ object NavRoutes {
     const val MAIN_MENU = "main_menu"
     const val COURSE_SELECTION = "course_selection"
     const val RESULTS_PAGE = "results_page/{score}/{totalQuestions}"
-    const val PROFILE = "profile_screen"
 
-    const val LESSON_1 = "lesson_presentation_1"
-
-    const val QUIZ_1 = "quiz_page" // update this later to be numbered
+    // const val LESSONS = "lessons_screen"
+     const val PROFILE = "profile_screen"
 }
 
 // Helper function to get current route
@@ -35,3 +33,4 @@ fun NavGraphBuilder.addResultsPage(navController: NavController) {
         ResultsPage(navController, score, totalQuestions)
     }
 }
+

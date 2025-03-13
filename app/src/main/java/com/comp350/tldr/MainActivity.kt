@@ -4,16 +4,33 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.NavController
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.comp350.tldr.lessonScreens.LessonPresentation_1
 import com.comp350.tldr.ui.theme.COMP350TLDRTheme
 
 class MainActivity : ComponentActivity() {
@@ -31,7 +48,7 @@ class MainActivity : ComponentActivity() {
                         // Only show bottom bar after welcome screen
                         val currentRoute = currentRoute(navController)
                         if (currentRoute != "welcome_screen") {
-                            //BottomNavBar(navController)
+                            BottomNavBar(navController)
                         }
                     }
                 ) { paddingValues ->
@@ -43,8 +60,8 @@ class MainActivity : ComponentActivity() {
                         enterTransition = { fadeIn(animationSpec = tween(700)) },
                         exitTransition = { fadeOut(animationSpec = tween(700)) }
                     ) {
-                        composable("welcome_screen") {  // input: navigation route name
-                            WelcomeScreen(navController) // input: associated kt file name, Note: Must match with files' primary function name
+                        composable("welcome_screen") {
+                            WelcomeScreen(navController)
                         }
                         composable("main_menu") {
                             MainMenuScreen(navController)
@@ -52,13 +69,6 @@ class MainActivity : ComponentActivity() {
                         composable("profile") {
                             ProfileScreen(navController)
                         }
-
-
-                        //------------------ Lessons
-                        composable("lesson_presentation_1") {
-                            LessonPresentation_1(navController)
-                        }
-                        //------------------ Quizzes
                         composable("quiz_page") {
                             QuizPage(navController)
                         }

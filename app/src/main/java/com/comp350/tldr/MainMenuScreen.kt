@@ -15,7 +15,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -137,7 +136,7 @@ fun MainMenuScreen(navController: NavController) {
                             onClick = {
                                 showLessonDialog = false
                                 // Navigate to the lesson screen
-                                navController.navigate("lesson_presentation_${selectedLesson + 1}")           //navController.navigate("lesson_screen/${selectedLesson + 1}")
+                                navController.navigate("quiz_page")//${selectedLesson + 1}")
                             },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF4CAF50) // Green

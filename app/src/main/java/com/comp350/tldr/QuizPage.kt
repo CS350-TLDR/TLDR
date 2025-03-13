@@ -117,12 +117,12 @@ fun QuizPage(navController: NavController) {
         )
     )
 
-    Image(
-        painter = painterResource(id = R.drawable.splash_background),
-        contentDescription = null,
-        contentScale = ContentScale.Crop,
-        modifier = Modifier.fillMaxSize()
-    )
+        Image(
+            painter = painterResource(id = R.drawable.splash_background),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
 
     if (currentQuestionIndex >= questions.size) {
         //End of quiz
@@ -223,3 +223,4 @@ fun QuizPage(navController: NavController) {
     }
 
 }
+

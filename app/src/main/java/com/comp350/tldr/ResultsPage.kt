@@ -52,7 +52,7 @@ fun ResultsPage(navController: NavController, score: Int, totalQuestions: Int) {
         Spacer(modifier = Modifier.height(16.dp))
 
         // Return to Main Menu Button
-        Button(onClick = { navController.navigate("main_menu") }) { // Sorry it's not working, a direct approach for now: navController.popBackStack()
+        Button(onClick = { navController.popBackStack() }) {
             Text(text = "Return to Main Menu")
         }
     }
