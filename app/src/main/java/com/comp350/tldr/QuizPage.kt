@@ -35,6 +35,7 @@ fun QuizPage(navController: NavController) {
     //Hides the dialog at the start of the quiz
     var showDialog by remember { mutableStateOf(false) }
     var isCorrect by remember { mutableStateOf(false)}
+    var score by remember { mutableStateOf(0) }
 
     // Empty list to be filled with quiz content later
     val questions = listOf(
@@ -125,15 +126,9 @@ fun QuizPage(navController: NavController) {
 
     if (currentQuestionIndex >= questions.size) {
         //End of quiz
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(text = "Quiz Completed!", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = { navController.popBackStack()}) {
-                Text("Return to Main Menu")
+        LaunchedEffect(Unit) {
+            navController.navigate("results_page/$score/${questions.size}") {
+                popUpTo("quiz_page") { inclusive = true}
             }
         }
     } else {
@@ -171,7 +166,7 @@ fun QuizPage(navController: NavController) {
                         colors = RadioButtonDefaults.colors(
                             selectedColor = Color.Blue,     // Selected option turns Blue
                             unselectedColor = Color.LightGray // Unselected options are Light Gray
-                    )
+                        )
                     )
                     Text(
                         text = answer,
@@ -187,9 +182,9 @@ fun QuizPage(navController: NavController) {
             Button(
                 onClick = {
                     isCorrect = selectedAnswerIndex == question.correctAnswerIndex
+                    if(isCorrect) score++
                     showDialog = true
                 },
-                modifier = Modifier.align(Alignment.CenterHorizontally),
                 enabled = selectedAnswerIndex != -1
             ) {
                 Text(text = "Submit Answer")
@@ -226,94 +221,6 @@ fun QuizPage(navController: NavController) {
             }
         }
     }
-        /*Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
-        ) {
-            // Quiz Title
-            Text(
-                text = "Welcome to the Quiz!",
-                fontSize = 30.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 24.dp),
-                textAlign = TextAlign.Center
-            )
 
-            // Empty Quiz Placeholder
-            if (options.isEmpty()) {
-                Text(
-                    text = "No quiz content available.",
-                    fontSize = 16.sp,
-                    color = Color(0xFF003048),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            } else {
-                // Quiz Options
-                options.forEach { answer ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { selectedAnswerIndex = answer }
-                            .padding(8.dp)
-                            .background(if (selectedAnswerIndex == answer) Color.LightGray else Color.Transparent)
-                            .padding(8.dp)
-                    ) {
-                        RadioButton(
-                            selected = (selectedAnswerIndex == answer),
-                            onClick = { selectedAnswerIndex = answer }
-                        )
-                        Text(
-                            text = answer,
-                            fontSize = 16.sp,
-                            modifier = Modifier.padding(start = 8.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Submit Button
-            Button(
-                onClick = { showDialog = true },
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-                enabled = options.isNotEmpty()  // Only enable if options exist
-            ) {
-                Text(text = "Submit Answer")
-            }
-
-            // Dialog for Quiz Feedback
-            if (showDialog) {
-                Dialog(onDismissRequest = { showDialog = false }) {
-                    Card(
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "Quiz submission recorded.",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(onClick = { showDialog = false }) {
-                                Text("OK")
-                            }
-                        }
-                    }
-                }
-            }
-        }*/
-    }
+}
 

@@ -72,6 +72,15 @@ class MainActivity : ComponentActivity() {
                         composable("quiz_page") {
                             QuizPage(navController)
                         }
+                        composable("results_page/{score}/{totalQuestions}") { backStackEntry ->
+                            val score =
+                                backStackEntry.arguments?.getString("score")?.toIntOrNull() ?: 0
+                            val totalQuestions =
+                                backStackEntry.arguments?.getString("totalQuestions")?.toIntOrNull()
+                                    ?: 0
+                            ResultsPage(navController, score, totalQuestions)
+                        }
+
                         // Add more screens as needed
                     }
                 }
