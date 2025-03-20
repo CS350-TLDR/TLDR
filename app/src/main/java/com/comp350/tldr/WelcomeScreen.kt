@@ -136,38 +136,51 @@ fun WelcomeScreen(navController: NavController) {
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     modifier = Modifier.fillMaxWidth()
                 )
-                // Navigation button with fade-out effect
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Display error message if login fails
+                loginError?.let {Text(it, color = Color.Red)}
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                //Login Button
                 Button(
                     onClick = {
                         coroutineScope.launch {
-                            // Trigger fade animation before navigation
-                            isVisible = false
-                            delay(1000)
-                            navController.navigate("main_menu") {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+                            auth.signInWithEmailAndPassword(email, password)
+                                .addOnCompleteListener { task ->
+                                    if (task.isSuccessful) {
+                                        isVisible = false // Start fade-out animation
+                                        coroutineScope.launch {
+                                            delay(1000) // Wait for animation before navigating
+                                            navController.navigate("main_menu") {
+                                                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        }
+                                    } else {
+                                        loginError = "Invalid email or password" // Show error message
+                                    }
                                 }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF1E88E5)
-                    ),
-                    modifier = Modifier
-                        .padding(bottom = 300.dp)
-                        .width(200.dp)
-                        .height(50.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88E5)),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = "Get Started",
-                        fontSize = 18.sp,
-                        color = Color.White
-                    )
+                    Text("Log In", fontSize = 18.sp, color = Color.White)
                 }
-            }
-        }
-    }
-}
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Navigate to registration screen
+                TextButton(onClick = { navController.navigate("register") }) {
+                    Text("Don't have an account? Register here", color = Color.White)
+                }
+            }//column
+            }//animated visibility
+    }//Box
+
+}//fun
 
