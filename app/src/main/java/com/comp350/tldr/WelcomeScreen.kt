@@ -5,7 +5,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -35,15 +34,6 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import android.widget.Toast
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import com.google.firebase.auth.FirebaseAuth
-
-
 
 
 // Welcome/splash screen with app intro and Get Started button
@@ -52,14 +42,7 @@ fun WelcomeScreen(navController: NavController) {
     // Controls fade-out animation when leaving screen
     var isVisible by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
-    val auth = FirebaseAuth.getInstance()
 
-    //User input fields
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var loginError by remember { mutableStateOf("") }
-
-    //main layout container
     Box(modifier = Modifier.fillMaxSize()) {
         // Background image
         Image(
@@ -77,7 +60,7 @@ fun WelcomeScreen(navController: NavController) {
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxSize().padding(20.dp)
+                modifier = Modifier.fillMaxSize()
             ) {
                 Spacer(modifier = Modifier.height(100.dp))
 
@@ -113,74 +96,38 @@ fun WelcomeScreen(navController: NavController) {
 
                 Spacer(modifier = Modifier.weight(1f))
 
-
-                // Email input field
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Email") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Password input field
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it},
-                    label = { Text("Password") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Display error message if login fails
-                loginError?.let {Text(it, color = Color.Red)}
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                //Login Button
+                // Navigation button with fade-out effect
                 Button(
                     onClick = {
                         coroutineScope.launch {
-                            auth.signInWithEmailAndPassword(email, password)
-                                .addOnCompleteListener { task ->
-                                    if (task.isSuccessful) {
-                                        isVisible = false // Start fade-out animation
-                                        coroutineScope.launch {
-                                            delay(1000) // Wait for animation before navigating
-                                            navController.navigate("main_menu") {
-                                                popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                                launchSingleTop = true
-                                                restoreState = true
-                                            }
-                                        }
-                                    } else {
-                                        loginError = "Invalid email or password" // Show error message
-                                    }
+                            // Trigger fade animation before navigation
+                            isVisible = false
+                            delay(1000)
+                            navController.navigate("main_menu") {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
                                 }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88E5)),
-                    modifier = Modifier.fillMaxWidth()
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF1E88E5)
+                    ),
+                    modifier = Modifier
+                        .padding(bottom = 300.dp)
+                        .width(200.dp)
+                        .height(50.dp)
                 ) {
-                    Text("Log In", fontSize = 18.sp, color = Color.White)
+                    Text(
+                        text = "Get Started",
+                        fontSize = 18.sp,
+                        color = Color.White
+                    )
                 }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Navigate to registration screen
-                TextButton(onClick = { navController.navigate("register") }) {
-                    Text("Don't have an account? Register here", color = Color.White)
-                }
-            }//column
-            }//animated visibility
-    }//Box
-
-}//fun
+            }
+        }
+    }
+}
 
