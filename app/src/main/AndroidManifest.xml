@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Add required permissions -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -12,6 +17,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.COMP350TLDR"
         tools:targetApi="31">
+
+        <!-- Main Activity -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -19,10 +26,15 @@
             android:theme="@style/Theme.COMP350TLDR">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Pop Quiz Service -->
+        <service
+            android:name=".PopQuizService"
+            android:enabled="true"
+            android:exported="false" />
     </application>
 
 </manifest>
