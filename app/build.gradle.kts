@@ -52,7 +52,6 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.firebase.storage)
     implementation("androidx.navigation:navigation-compose:2.7.7")
-    implementation(libs.firebase.auth)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
