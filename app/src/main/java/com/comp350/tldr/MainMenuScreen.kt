@@ -1,7 +1,6 @@
 package com.comp350.tldr
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,30 +16,70 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
+import kotlinx.coroutines.launch
+import android.content.Context
+import android.content.Context.MODE_PRIVATE
+import android.content.Intent
+import android.provider.Settings
+import android.widget.Toast
 
 @Composable
-fun MainMenuScreen(navController: NavController) {
-    // State for the lesson popup
-    var showLessonDialog by remember { mutableStateOf(false) }
-    var selectedLesson by remember { mutableStateOf(0) }
+fun MainMenuScreen(navController: NavController, context: Context) {
+    // Shared preferences for persistence
+    val sharedPrefs = remember { context.getSharedPreferences("tldr_prefs", MODE_PRIVATE) }
 
-    // Lesson titles and descriptions
-    val lessons = listOf(
-        "Variables & Data Types" to "Learn about different types of data and how to store them in variables.",
+    // State variables with persisted values
+    var selectedTopic by remember {
+        mutableStateOf(sharedPrefs.getInt("selected_topic", 0))
+    }
+    var selectedInterval by remember {
+        mutableStateOf(sharedPrefs.getInt("selected_interval", 2))
+    }
+    var isQuizModeEnabled by remember {
+        mutableStateOf(sharedPrefs.getBoolean("quiz_mode_enabled", false))
+    }
+    var maxQuestions by remember {
+        mutableStateOf(sharedPrefs.getInt("max_questions", 5))
+    }
 
+    val coroutineScope = rememberCoroutineScope()
+
+    // List of available topics
+    val topics = listOf(
+        "Python Basics" to "Learn fundamental Python programming concepts and syntax.",
+        "Variables & Data Types" to "Understanding how to store and manipulate data in Python.",
+        "Control Flow" to "Learn about conditionals and loops in Python.",
     )
 
-    Box()
-        {
+    // List of available intervals (in minutes)
+    val intervals = listOf(0.5, 2.0, 5.0, 10.0)
 
-        Image(
-                painter = painterResource(id = R.drawable.splash_background),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+    // List of max question counts
+    val questionCounts = listOf(3, 5, 10, 20)
+
+    // Check service status on init
+    LaunchedEffect(Unit) {
+        // If service should be running but isn't, restart it
+        if (isQuizModeEnabled) {
+            startPopQuizService(
+                context,
+                topics[selectedTopic].first,
+                intervals[selectedInterval],
+                maxQuestions
             )
+        }
+    }
+
+    Box {
+        // Background image
+        Image(
+            painter = painterResource(id = R.drawable.splash_background),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -49,8 +88,8 @@ fun MainMenuScreen(navController: NavController) {
         ) {
             // Title
             Text(
-                text = "Choose a Lesson",
-                fontSize = 30.sp,
+                text = "TLDR Learning",
+                fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 modifier = Modifier
@@ -59,115 +98,307 @@ fun MainMenuScreen(navController: NavController) {
                 textAlign = TextAlign.Center
             )
 
-            // Lesson buttons grid
-            lessons.forEachIndexed { index, (title, _) ->
-                Button(
-                    onClick = {
-                        selectedLesson = index
-                        showLessonDialog = true
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF1E88E5)
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp)
-                        .padding(vertical = 8.dp)
+            // Topic selection section
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF003048).copy(alpha = 0.7f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "Lesson ${index + 1}: $title",
-                        fontSize = 16.sp,
+                        text = "Select a Learning Topic",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
                         color = Color.White
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Topic options
+                    topics.forEachIndexed { index, (title, _) ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                        ) {
+                            RadioButton(
+                                selected = selectedTopic == index,
+                                onClick = {
+                                    selectedTopic = index
+                                    // Save selection
+                                    sharedPrefs.edit().putInt("selected_topic", index).apply()
+
+                                    // Update service if running
+                                    if (isQuizModeEnabled) {
+                                        startPopQuizService(
+                                            context,
+                                            topics[selectedTopic].first,
+                                            intervals[selectedInterval],
+                                            maxQuestions
+                                        )
+                                    }
+                                },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = Color(0xFF4CAF50)
+                                )
+                            )
+                            Text(
+                                text = title,
+                                fontSize = 16.sp,
+                                color = Color.White,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+
+                    // Topic description
+                    Text(
+                        text = topics[selectedTopic].second,
+                        fontSize = 14.sp,
+                        color = Color.LightGray,
+                        modifier = Modifier.padding(top = 8.dp, start = 8.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(50.dp))
-        }
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // Lesson info popup dialog
-        if (showLessonDialog) {
-            Dialog(onDismissRequest = { showLessonDialog = false }) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    shape = RoundedCornerShape(16.dp),
+            // Quiz settings section
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF003048).copy(alpha = 0.7f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
                 ) {
-                    Column(
+                    Text(
+                        text = "Pop Quiz Settings",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Interval selection
+                    Text(
+                        text = "Quiz Interval:",
+                        fontSize = 16.sp,
+                        color = Color.White
+                    )
+
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        // Lesson title
-                        Text(
-                            text = "Lesson ${selectedLesson + 1}",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF003048)
-                        )
+                        intervals.forEachIndexed { index, interval ->
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                RadioButton(
+                                    selected = selectedInterval == index,
+                                    onClick = {
+                                        selectedInterval = index
+                                        // Save selection
+                                        sharedPrefs.edit().putInt("selected_interval", index).apply()
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                                        // Update service if running
+                                        if (isQuizModeEnabled) {
+                                            startPopQuizService(
+                                                context,
+                                                topics[selectedTopic].first,
+                                                intervals[selectedInterval],
+                                                maxQuestions
+                                            )
+                                        }
+                                    },
+                                    colors = RadioButtonDefaults.colors(
+                                        selectedColor = Color(0xFF4CAF50)
+                                    )
+                                )
+                                Text(
+                                    text = if (interval < 1) "${(interval * 60).toInt()} sec" else "${interval.toInt()} min",
+                                    fontSize = 14.sp,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
 
-                        // Lesson name
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Question count selection
+                    Text(
+                        text = "Number of Questions:",
+                        fontSize = 16.sp,
+                        color = Color.White
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        questionCounts.forEachIndexed { index, count ->
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                RadioButton(
+                                    selected = maxQuestions == count,
+                                    onClick = {
+                                        maxQuestions = count
+                                        // Save selection
+                                        sharedPrefs.edit().putInt("max_questions", count).apply()
+
+                                        // Update service if running
+                                        if (isQuizModeEnabled) {
+                                            startPopQuizService(
+                                                context,
+                                                topics[selectedTopic].first,
+                                                intervals[selectedInterval],
+                                                maxQuestions
+                                            )
+                                        }
+                                    },
+                                    colors = RadioButtonDefaults.colors(
+                                        selectedColor = Color(0xFF4CAF50)
+                                    )
+                                )
+                                Text(
+                                    text = "$count",
+                                    fontSize = 14.sp,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Enable/Disable Pop Quiz mode
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text(
-                            text = lessons[selectedLesson].first,
+                            text = "Pop Quiz Mode",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Medium,
-                            color = Color(0xFF003048)
+                            color = Color.White
                         )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Switch(
+                            checked = isQuizModeEnabled,
+                            onCheckedChange = { isEnabled ->
+                                if (isEnabled) {
+                                    // Check for overlay permission before enabling
+                                    if (!Settings.canDrawOverlays(context)) {
+                                        // Request permission
+                                        val intent = Intent(
+                                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION
+                                        )
+                                        context.startActivity(intent)
+                                        Toast.makeText(
+                                            context,
+                                            "Please grant overlay permission to enable Pop Quiz mode",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    } else {
+                                        isQuizModeEnabled = true
+                                        // Save state
+                                        sharedPrefs.edit().putBoolean("quiz_mode_enabled", true).apply()
 
-                        // Lesson description
-                        Text(
-                            text = lessons[selectedLesson].second,
-                            fontSize = 16.sp,
-                            color = Color.DarkGray,
-                            textAlign = TextAlign.Center
-                        )
+                                        startPopQuizService(
+                                            context,
+                                            topics[selectedTopic].first,
+                                            intervals[selectedInterval],
+                                            maxQuestions
+                                        )
+                                    }
+                                } else {
+                                    isQuizModeEnabled = false
+                                    // Save state
+                                    sharedPrefs.edit().putBoolean("quiz_mode_enabled", false).apply()
 
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        // Start lesson button
-                        Button(
-                            onClick = {
-                                showLessonDialog = false
-                                // Navigate to the lesson screen
-                                navController.navigate("quiz_page")//${selectedLesson + 1}")
+                                    stopPopQuizService(context)
+                                }
                             },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF4CAF50) // Green
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp)
-                        ) {
-                            Text(
-                                text = "Start Lesson",
-                                fontSize = 18.sp,
-                                color = Color.White
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color(0xFF4CAF50),
+                                checkedTrackColor = Color(0xFF4CAF50).copy(alpha = 0.5f)
                             )
-                        }
+                        )
+                    }
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // Cancel button
-                        TextButton(
-                            onClick = { showLessonDialog = false },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = "Cancel",
-                                fontSize = 16.sp,
-                                color = Color.Gray
-                            )
-                        }
+                    if (isQuizModeEnabled) {
+                        Text(
+                            text = "Robot will ask you ${maxQuestions} questions every ${if (intervals[selectedInterval] < 1) "${(intervals[selectedInterval] * 60).toInt()} seconds" else "${intervals[selectedInterval].toInt()} minutes"}",
+                            fontSize = 14.sp,
+                            color = Color(0xFF4CAF50),
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Practice button
+            Button(
+                onClick = {
+                    navController.navigate("quiz_page")
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF1E88E5)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) {
+                Text(
+                    text = "Practice Now",
+                    fontSize = 18.sp,
+                    color = Color.White
+                )
+            }
+
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
+}
+
+// Helper function to start the pop quiz service
+private fun startPopQuizService(context: Context, topic: String, intervalMinutes: Double, maxQuestions: Int) {
+    val intent = Intent(context, PopQuizService::class.java).apply {
+        putExtra("topic", topic)
+        putExtra("interval", (intervalMinutes * 60 * 1000).toLong()) // Convert to milliseconds
+        putExtra("maxQuestions", maxQuestions)
+        action = "START_SERVICE"
+    }
+    context.startService(intent)
+}
+
+// Helper function to stop the pop quiz service
+private fun stopPopQuizService(context: Context) {
+    val intent = Intent(context, PopQuizService::class.java).apply {
+        action = "STOP_SERVICE"
+    }
+    context.startService(intent)
 }
