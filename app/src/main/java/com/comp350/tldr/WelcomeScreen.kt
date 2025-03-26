@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
+import androidx.compose.runtime.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,15 +38,17 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
-// Welcome/splash screen with app intro and Get Started button
+// Composable function for the Welcome screen (splash screen)
 @Composable
 fun WelcomeScreen(navController: NavController) {
-    // Controls fade-out animation when leaving screen
+    // Controls whether the screen content is visible (used for fade animation)
     var isVisible by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
 
+    // Main container for the screen content
     Box(modifier = Modifier.fillMaxSize()) {
-        // Background image
+
+        // Background image fills the entire screen
         Image(
             painter = painterResource(id = R.drawable.splash_background),
             contentDescription = null,
@@ -52,17 +56,18 @@ fun WelcomeScreen(navController: NavController) {
             modifier = Modifier.fillMaxSize()
         )
 
-        // Content with fade animation
+        // Animated visibility for fade-in/out effects on the welcome content
         AnimatedVisibility(
             visible = isVisible,
-            enter = fadeIn(animationSpec = tween(1000)),
-            exit = fadeOut(animationSpec = tween(1000))
+            enter = fadeIn(animationSpec = tween(1000)),    // fade in over 1 second
+            exit = fadeOut(animationSpec = tween(1000))     // fade out over 1 second
         ) {
+            // Column layout for vertical stacking of elements
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxSize()
             ) {
-                Spacer(modifier = Modifier.height(100.dp))
+                Spacer(modifier = Modifier.height(100.dp)) // space from top
 
                 // App title
                 Text(
@@ -74,7 +79,7 @@ fun WelcomeScreen(navController: NavController) {
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Robot mascot
+                // Robot mascot image
                 Image(
                     painter = painterResource(id = R.drawable.robot),
                     contentDescription = "Robot character",
@@ -94,37 +99,51 @@ fun WelcomeScreen(navController: NavController) {
                     lineHeight = 28.sp
                 )
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.weight(1f)) // push content to the top
 
-                // Navigation button with fade-out effect
-                Button(
-                    onClick = {
-                        coroutineScope.launch {
-                            // Trigger fade animation before navigation
-                            isVisible = false
-                            delay(1000)
-                            navController.navigate("main_menu") {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF1E88E5)
-                    ),
+                // Buttons section for login and signup
+                Column(
                     modifier = Modifier
-                        .padding(bottom = 300.dp)
-                        .width(200.dp)
-                        .height(50.dp)
+                        .padding(bottom = 200.dp), // space from bottom
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "Get Started",
-                        fontSize = 18.sp,
-                        color = Color.White
-                    )
+                    // Log In Button
+                    Button(
+                        onClick = {
+                            coroutineScope.launch {
+                                // Trigger fade-out before navigating
+                                isVisible = false
+                                delay(500)
+                                navController.navigate("login")
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88E5)), // blue
+                        modifier = Modifier
+                            .width(200.dp)
+                            .height(50.dp)
+                    ) {
+                        Text("Log In", fontSize = 18.sp, color = Color.White)
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Sign Up Button
+                    Button(
+                        onClick = {
+                            coroutineScope.launch {
+                                // Trigger fade-out before navigating
+                                isVisible = false
+                                delay(500)
+                                navController.navigate("signup")
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43A047)), // green
+                        modifier = Modifier
+                            .width(200.dp)
+                            .height(50.dp)
+                    ) {
+                        Text("Sign Up", fontSize = 18.sp, color = Color.White)
+                    }
                 }
             }
         }
