@@ -1,4 +1,4 @@
-package com.comp350.tldr
+package com.comp350.tldr.unusedfeatures
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home

@@ -25,17 +25,9 @@ class MainActivity : ComponentActivity() {
                 // Remember the NavController
                 val navController = rememberNavController()
 
-                // Use Scaffold to create a layout with a bottom navigation bar
-                Scaffold(
-                    bottomBar = {
-                        // Only show bottom bar after welcome screen
-                        val currentRoute = currentRoute(navController)
-                        if (currentRoute != "welcome_screen") {
-                            BottomNavBar(navController)
-                        }
-                    }
-                ) { paddingValues ->
-                    // Navigation host inside scaffold with padding for the bottom bar
+                // Use Scaffold without bottom navigation bar
+                Scaffold { paddingValues ->
+                    // Navigation host inside scaffold with padding
                     NavHost(
                         navController = navController,
                         startDestination = "welcome_screen",
@@ -58,17 +50,6 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("profile") {
                             ProfileScreen(navController)
-                        }
-                        composable("quiz_page") {
-                            QuizPage(navController)
-                        }
-                        composable("results_page/{score}/{totalQuestions}") { backStackEntry ->
-                            val score =
-                                backStackEntry.arguments?.getString("score")?.toIntOrNull() ?: 0
-                            val totalQuestions =
-                                backStackEntry.arguments?.getString("totalQuestions")?.toIntOrNull()
-                                    ?: 0
-                            ResultsPage(navController, score, totalQuestions)
                         }
                     }
                 }
