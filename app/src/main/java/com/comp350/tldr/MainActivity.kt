@@ -28,9 +28,11 @@ class MainActivity : ComponentActivity() {
                 // Use Scaffold to create a layout with a bottom navigation bar
                 Scaffold(
                     bottomBar = {
-                        // Only show bottom bar after welcome screen
+                        // Doesn't show nav bar in welcome screen, log in, or sign up screen. Shows in all other screens
                         val currentRoute = currentRoute(navController)
-                        if (currentRoute != "welcome_screen") {
+                        val hideBottomBarRoutes = listOf("welcome_screen", "login", "signup")
+
+                        if (currentRoute !in hideBottomBarRoutes) {
                             BottomNavBar(navController)
                         }
                     }
