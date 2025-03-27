@@ -1,9 +1,12 @@
 package com.comp350.tldr
 
+import androidx.navigation.compose.composable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.NavGraphBuilder
+import com.comp350.tldr.unusedfeatures.ResultsPage
 
 // Central location for all navigation route names
 // This helps avoid typos and makes refactoring easier
@@ -11,9 +14,10 @@ object NavRoutes {
     const val WELCOME = "welcome_screen"
     const val MAIN_MENU = "main_menu"
     const val COURSE_SELECTION = "course_selection"
+    const val RESULTS_PAGE = "results_page/{score}/{totalQuestions}"
 
     // const val LESSONS = "lessons_screen"
-     const val PROFILE = "profile_screen"
+    const val PROFILE = "profile_screen"
 }
 
 // Helper function to get current route
@@ -22,3 +26,14 @@ fun currentRoute(navController: NavController): String? {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     return navBackStackEntry?.destination?.route
 }
+
+fun NavGraphBuilder.addResultsPage(navController: NavController) {
+    composable("results_page/{score}/{totalQuestions}") { backStackEntry ->
+        val score = backStackEntry.arguments?.getString("score")?.toIntOrNull() ?: 0
+        val totalQuestions = backStackEntry.arguments?.getString("totalQuestions")?.toIntOrNull() ?: 0
+        ResultsPage(navController, score, totalQuestions)
+    }
+}
+
+
+
