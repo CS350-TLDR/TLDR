@@ -3,6 +3,7 @@ package com.comp350.tldr
 import androidx.navigation.compose.composable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.NavGraphBuilder
@@ -16,7 +17,7 @@ object NavRoutes {
     const val RESULTS_PAGE = "results_page/{score}/{totalQuestions}"
 
     // const val LESSONS = "lessons_screen"
-     const val PROFILE = "profile_screen"
+    const val PROFILE = "profile_screen"
 }
 
 // Helper function to get current route
@@ -33,4 +34,6 @@ fun NavGraphBuilder.addResultsPage(navController: NavController) {
         ResultsPage(navController, score, totalQuestions)
     }
 }
+
+
 

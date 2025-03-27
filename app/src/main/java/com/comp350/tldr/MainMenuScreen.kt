@@ -53,6 +53,8 @@ fun MainMenuScreen(navController: NavController, context: Context) {
 
     val coroutineScope = rememberCoroutineScope()
 
+    var isVideoPlaying by remember { mutableStateOf(false) }
+
     // List of available topics
     val topics = listOf(
         "Python Basics" to "Learn fundamental Python programming concepts and syntax.",
@@ -62,7 +64,6 @@ fun MainMenuScreen(navController: NavController, context: Context) {
 
     // List of available intervals (in minutes)
     val intervals = listOf(0.5, 2.0, 5.0, 10.0)
-
     // List of max question counts
     val questionCounts = listOf(3, 5, 10, 20)
 
@@ -105,6 +106,32 @@ fun MainMenuScreen(navController: NavController, context: Context) {
                     .padding(vertical = 24.dp),
                 textAlign = TextAlign.Center
             )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (isVideoPlaying) {
+                VideoPlayer(modifier = Modifier.padding(vertical = 16.dp),
+                    onVideoFinished = { isVideoPlaying = false })
+            }
+            // Watch Video button
+            Button(
+                onClick = {
+                    isVideoPlaying = true
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF1E88E5)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) {
+                Text(
+                    text = "Python Intro Lesson",
+                    fontSize = 18.sp,
+                    color = Color.White
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Topic selection section
             Card(
@@ -175,6 +202,7 @@ fun MainMenuScreen(navController: NavController, context: Context) {
                     )
                 }
             }
+
 
             Spacer(modifier = Modifier.height(16.dp))
 
