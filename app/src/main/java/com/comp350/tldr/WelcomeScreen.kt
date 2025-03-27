@@ -5,6 +5,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,11 +28,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -45,17 +53,63 @@ fun WelcomeScreen(navController: NavController) {
     var isVisible by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Main container for the screen content
-    Box(modifier = Modifier.fillMaxSize()) {
+    // Define the pixel font family using the rainyhearts font
+    val pixelFontFamily = FontFamily(
+        Font(R.font.rainyhearts, FontWeight.Normal)
+    )
 
-        // Background image fills the entire screen
-        Image(
-            painter = painterResource(id = R.drawable.splash_background),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
+    // Text style with pixel font and much thicker black outline
+    val pixelTextStyle = TextStyle(
+        fontFamily = pixelFontFamily,
+        shadow = Shadow(
+            color = Color.Black,
+            blurRadius = 2f,
+            offset = androidx.compose.ui.geometry.Offset(6f, 6f)
         )
+    )
 
+    // Create a blue to dark blue gradient
+    val gradientBackground = Brush.verticalGradient(
+        colors = listOf(
+            Color(0xFF4B89DC),  // Light blue color
+            Color(0xFF3568CC),  // Medium blue
+            Color(0xFF1A237E)   // Dark blue color
+        )
+    )
+
+    // Main container for the screen content
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(gradientBackground)
+    ) {
+        // Pixelated overlay effect
+        Canvas(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            val pixelSize = 20f
+            val width = size.width
+            val height = size.height
+
+            // Draw pixelated grid
+            for (x in 0 until (width / pixelSize).toInt()) {
+                for (y in 0 until (height / pixelSize).toInt()) {
+                    // Calculate position and size
+                    val left = x * pixelSize
+                    val top = y * pixelSize
+
+                    // Create random opacity for each pixel to create texture
+                    val opacity = if ((x + y) % 4 == 0) 0.1f else 0.05f
+
+                    // Draw pixel square with slightly different color
+                    drawRect(
+                        color = Color.Black.copy(alpha = opacity),
+                        topLeft = androidx.compose.ui.geometry.Offset(left, top),
+                        size = androidx.compose.ui.geometry.Size(pixelSize, pixelSize)
+                    )
+                }
+            }
+        }
         // Animated visibility for fade-in/out effects on the welcome content
         AnimatedVisibility(
             visible = isVisible,
@@ -73,19 +127,20 @@ fun WelcomeScreen(navController: NavController) {
                 Text(
                     text = "TLDR",
                     color = Color.White,
-                    fontSize = 60.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 85.sp,
+                    fontWeight = FontWeight.Bold,
+                    style = pixelTextStyle
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Robot mascot image
+                // Robot mascot image without border
                 Image(
                     painter = painterResource(id = R.drawable.robot),
                     contentDescription = "Robot character",
                     modifier = Modifier
-                        .width(120.dp)
-                        .height(120.dp)
+                        .width(140.dp)
+                        .height(140.dp)
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -94,9 +149,10 @@ fun WelcomeScreen(navController: NavController) {
                 Text(
                     text = "Learn to code...\na little everyday",
                     color = Color.White,
-                    fontSize = 28.sp,
+                    fontSize = 40.sp,
                     textAlign = TextAlign.Center,
-                    lineHeight = 28.sp
+                    lineHeight = 40.sp,
+                    style = pixelTextStyle
                 )
 
                 Spacer(modifier = Modifier.weight(1f)) // push content to the top
@@ -122,12 +178,17 @@ fun WelcomeScreen(navController: NavController) {
                             .width(200.dp)
                             .height(50.dp)
                     ) {
-                        Text("Log In", fontSize = 18.sp, color = Color.White)
+                        Text(
+                            "Log In",
+                            fontSize = 26.sp,
+                            color = Color.White,
+                            style = pixelTextStyle
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // Sign Up Button
+                    // Sign Up Button (now white with dark text)
                     Button(
                         onClick = {
                             coroutineScope.launch {
@@ -137,16 +198,28 @@ fun WelcomeScreen(navController: NavController) {
                                 navController.navigate("signup")
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43A047)), // green
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White
+                        ),
                         modifier = Modifier
                             .width(200.dp)
                             .height(50.dp)
                     ) {
-                        Text("Sign Up", fontSize = 18.sp, color = Color.White)
+                        Text(
+                            "Sign Up",
+                            fontSize = 26.sp,
+                            color = Color(0xFF1A237E), // Dark blue text on white button
+                            style = pixelTextStyle.copy(
+                                shadow = Shadow(
+                                    color = Color.Black,
+                                    blurRadius = 2f,
+                                    offset = androidx.compose.ui.geometry.Offset(3f, 3f)
+                                )
+                            )
+                        )
                     }
                 }
             }
         }
     }
 }
-
