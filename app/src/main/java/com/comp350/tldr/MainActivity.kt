@@ -46,6 +46,12 @@ class MainActivity : ComponentActivity() {
                         composable("welcome_screen") {
                             WelcomeScreen(navController)
                         }
+                        composable("login") {
+                            LoginScreen(navController)
+                        }
+                        composable("signup") {
+                            SignUpScreen(navController)
+                        }
                         composable("main_menu") {
                             // Pass the context to allow starting services
                             MainMenuScreen(navController, this@MainActivity)
