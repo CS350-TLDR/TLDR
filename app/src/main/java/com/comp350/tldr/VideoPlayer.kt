@@ -17,32 +17,28 @@ fun VideoPlayer(modifier: Modifier = Modifier, onVideoFinished: () -> Unit) {
     val context = LocalContext.current
     val videoUri = Uri.parse("android.resource://${context.packageName}/${R.raw.pythonbasics}")
 
-    // Create the ExoPlayer instance
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
             // Set the media item to play
             setMediaItem(MediaItem.fromUri(videoUri))
             prepare()
 
-            // Add a listener to detect when the video finishes
             addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(state: Int) {
                     if (state == Player.STATE_ENDED) {
-                        onVideoFinished()  // Notify when video finishes
+                        onVideoFinished()
                     }
                 }
             })
         }
     }
 
-    // Dispose of ExoPlayer when the composable is disposed
     DisposableEffect(Unit) {
         onDispose {
             exoPlayer.release()
         }
     }
 
-    // AndroidView to display the video
     AndroidView(
         factory = { PlayerView(context).apply { player = exoPlayer } },
         modifier = modifier
