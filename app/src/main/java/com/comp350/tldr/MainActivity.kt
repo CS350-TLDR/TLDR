@@ -31,7 +31,7 @@ class MainActivity : ComponentActivity() {
                         // Only show bottom bar after welcome screen
                         val currentRoute = currentRoute(navController)
                         if (currentRoute != "welcome_screen") {
-                            BottomNavBar(navController)
+                            //BottomNavBar(navController)
                         }
                     }
                 ) { paddingValues ->

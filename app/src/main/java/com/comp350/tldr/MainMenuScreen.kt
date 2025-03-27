@@ -39,6 +39,14 @@ fun MainMenuScreen(navController: NavController, context: Context) {
     var isQuizModeEnabled by remember {
         mutableStateOf(sharedPrefs.getBoolean("quiz_mode_enabled", false))
     }
+
+    var isLessonModeEnabled by remember {
+        mutableStateOf(sharedPrefs.getBoolean("lesson_mode_enabled", false))
+    }
+
+
+
+
     var maxQuestions by remember {
         mutableStateOf(sharedPrefs.getInt("max_questions", 5))
     }
@@ -345,6 +353,45 @@ fun MainMenuScreen(navController: NavController, context: Context) {
                             )
                         )
                     }
+                    ////////////////////////vvvvvvv
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Enable/Disable Pop Lesson mode
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Pop Lesson Mode",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White
+                        )
+
+                        Switch(
+                            checked = isLessonModeEnabled,
+                            onCheckedChange = { isEnabled ->
+                                if (isEnabled) {
+                                    startPopLessonService(context, topics[selectedTopic].first, intervals[selectedInterval])
+                                    isLessonModeEnabled = true
+                                    sharedPrefs.edit().putBoolean("lesson_mode_enabled", true).apply()
+
+                                } else {
+                                    isLessonModeEnabled = false
+                                    // Save state
+                                    sharedPrefs.edit().putBoolean("lesson_mode_enabled", false).apply()
+
+                                    stopPopLessonService(context)
+                                }
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color(0xFF4CAF50),
+                                checkedTrackColor = Color(0xFF4CAF50).copy(alpha = 0.5f)
+                            )
+                        )
+                    }
+                    ////////////////////////^^^^^^^
 
                     if (isQuizModeEnabled) {
                         Text(
@@ -384,6 +431,8 @@ fun MainMenuScreen(navController: NavController, context: Context) {
     }
 }
 
+
+
 // Helper function to start the pop quiz service
 private fun startPopQuizService(context: Context, topic: String, intervalMinutes: Double, maxQuestions: Int) {
     val intent = Intent(context, PopQuizService::class.java).apply {
@@ -398,6 +447,23 @@ private fun startPopQuizService(context: Context, topic: String, intervalMinutes
 // Helper function to stop the pop quiz service
 private fun stopPopQuizService(context: Context) {
     val intent = Intent(context, PopQuizService::class.java).apply {
+        action = "STOP_SERVICE"
+    }
+    context.startService(intent)
+}
+
+// Helper function to start the pop lesson service
+private fun startPopLessonService(context: Context, topic: String, intervalMinutes: Double) {
+    val intent = Intent(context, PopLessonService::class.java).apply {
+        putExtra("topic", topic)
+        putExtra("interval", (intervalMinutes * 60 * 1000).toLong()) // Convert to milliseconds
+        action = "START_SERVICE"
+    }
+    context.startService(intent)
+}
+// Helper function to stop the pop quiz service
+private fun stopPopLessonService(context: Context) {
+    val intent = Intent(context, PopLessonService::class.java).apply {
         action = "STOP_SERVICE"
     }
     context.startService(intent)

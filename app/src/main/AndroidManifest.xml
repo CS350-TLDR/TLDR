@@ -35,6 +35,11 @@
             android:name=".PopQuizService"
             android:enabled="true"
             android:exported="false" />
+        <!-- Pop Lesson Service -->
+        <service
+            android:name=".PopLessonService"
+            android:enabled="true"
+            android:exported="false" />
     </application>
 
 </manifest>
