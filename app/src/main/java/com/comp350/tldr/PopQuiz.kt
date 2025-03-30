@@ -242,7 +242,7 @@ class PopQuizService : Service() {
 
         // Find views in the layout
         val robotImage = floatingView?.findViewById<ImageView>(R.id.robotImage)
-        val questionText = floatingView?.findViewById<TextView>(R.id.lessonText)
+        val questionText = floatingView?.findViewById<TextView>(R.id.questionText)
         val radioGroup = floatingView?.findViewById<RadioGroup>(R.id.answersRadioGroup)
         val submitButton = floatingView?.findViewById<Button>(R.id.submitButton)
         val closeButton = floatingView?.findViewById<Button>(R.id.closeButton)
