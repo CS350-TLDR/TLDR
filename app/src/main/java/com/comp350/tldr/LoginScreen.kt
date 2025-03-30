@@ -3,6 +3,7 @@ package com.comp350.tldr
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -108,30 +109,36 @@ fun LoginScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            OutlinedTextField(
+            // Email input field with white background
+            TextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Email", color = Color.White.copy(alpha = 0.8f)) },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.White,
-                    unfocusedBorderColor = Color.White.copy(alpha = 0.7f),
-                    focusedLabelColor = Color.White
+                label = { Text("Email", color = Color.Gray) },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black
                 ),
+                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            OutlinedTextField(
+            // Password input field with white background
+            TextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Password", color = Color.White.copy(alpha = 0.8f)) },
+                label = { Text("Password", color = Color.Gray) },
                 visualTransformation = PasswordVisualTransformation(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.White,
-                    unfocusedBorderColor = Color.White.copy(alpha = 0.7f),
-                    focusedLabelColor = Color.White
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black
                 ),
+                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -143,6 +150,7 @@ fun LoginScreen(navController: NavController) {
                     auth.signInWithEmailAndPassword(email, password)
                         .addOnCompleteListener { task ->
                             if (task.isSuccessful) {
+                                // Navigate to welcome screen instead of main menu
                                 navController.navigate("main_menu") {
                                     popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
                                 }

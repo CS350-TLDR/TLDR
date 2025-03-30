@@ -3,6 +3,7 @@ package com.comp350.tldr
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -109,51 +110,57 @@ fun SignUpScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Email input
-            OutlinedTextField(
+            // Email input field with white background
+            TextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Email", color = Color.White.copy(alpha = 0.8f)) },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.White,
-                    unfocusedBorderColor = Color.White.copy(alpha = 0.7f),
-                    focusedLabelColor = Color.White
+                label = { Text("Email", color = Color.Gray) },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black
                 ),
+                shape = RoundedCornerShape(8.dp),
+                singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Password input
-            OutlinedTextField(
+            // Password input field with white background
+            TextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Password", color = Color.White.copy(alpha = 0.8f)) },
+                label = { Text("Password", color = Color.Gray) },
                 visualTransformation = PasswordVisualTransformation(),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.White,
-                    unfocusedBorderColor = Color.White.copy(alpha = 0.7f),
-                    focusedLabelColor = Color.White
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black
                 ),
+                shape = RoundedCornerShape(8.dp),
+                singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Confirm Password input
-            OutlinedTextField(
+            // Confirm Password input field with white background
+            TextField(
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it },
-                label = { Text("Confirm Password", color = Color.White.copy(alpha = 0.8f)) },
+                label = { Text("Confirm Password", color = Color.Gray) },
                 visualTransformation = PasswordVisualTransformation(),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.White,
-                    unfocusedBorderColor = Color.White.copy(alpha = 0.7f),
-                    focusedLabelColor = Color.White
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black
                 ),
+                shape = RoundedCornerShape(8.dp),
+                singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -176,7 +183,8 @@ fun SignUpScreen(navController: NavController) {
                             auth.createUserWithEmailAndPassword(email, password)
                                 .addOnCompleteListener { task ->
                                     if (task.isSuccessful) {
-                                        navController.navigate("main_menu") {
+                                        // Navigate to welcome screen instead of main menu
+                                        navController.navigate("welcome_screen") {
                                             popUpTo(navController.graph.startDestinationId) { inclusive = true }
                                         }
                                     } else {

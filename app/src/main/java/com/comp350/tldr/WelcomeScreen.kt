@@ -147,7 +147,7 @@ fun WelcomeScreen(navController: NavController) {
 
                 // App tagline
                 Text(
-                    text = "Learn to code...\na little everyday",
+                    text = "Learn a little everyday",
                     color = Color.White,
                     fontSize = 40.sp,
                     textAlign = TextAlign.Center,
