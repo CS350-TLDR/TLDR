@@ -1,4 +1,4 @@
-package com.comp350.tldr.unusedfeatures
+package com.comp350.tldr.classicstuff
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*

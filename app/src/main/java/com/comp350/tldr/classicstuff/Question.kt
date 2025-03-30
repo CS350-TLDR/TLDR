@@ -1,4 +1,4 @@
-package com.comp350.tldr.unusedfeatures
+package com.comp350.tldr.classicstuff
 
 // Data class to represent a quiz question
 data class Question(

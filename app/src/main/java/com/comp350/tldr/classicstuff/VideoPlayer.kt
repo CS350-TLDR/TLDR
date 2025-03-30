@@ -1,4 +1,4 @@
-package com.comp350.tldr
+package com.comp350.tldr.classicstuff
 
 import android.net.Uri
 import androidx.compose.foundation.layout.*
@@ -11,6 +11,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import com.comp350.tldr.R
 
 @Composable
 fun VideoPlayer(modifier: Modifier = Modifier, onVideoFinished: () -> Unit) {
