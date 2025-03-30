@@ -1,95 +1,37 @@
-package com.comp350.tldr
+package com.comp350.tldr.view.screens
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.google.firebase.auth.FirebaseAuth
+import com.comp350.tldr.ui.theme.components.*
+import com.comp350.tldr.controllers.NavigationController
+import com.comp350.tldr.view.components.PixelBackground
+import com.comp350.tldr.view.theme.AppTheme
 
 @Composable
 fun LoginScreen(navController: NavController) {
     val context = LocalContext.current
     val auth = FirebaseAuth.getInstance()
+    val navigationController = NavigationController(navController)
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
 
-    // Define the pixel font family
-    val pixelFontFamily = FontFamily(
-        Font(R.font.rainyhearts, FontWeight.Normal)
-    )
-
-    // Text style with pixel font and thick black outline
-    val pixelTextStyle = TextStyle(
-        fontFamily = pixelFontFamily,
-        shadow = Shadow(
-            color = Color.Black,
-            blurRadius = 2f,
-            offset = androidx.compose.ui.geometry.Offset(6f, 6f)
-        )
-    )
-
-    // Create blue to dark blue gradient
-    val gradientBackground = Brush.verticalGradient(
-        colors = listOf(
-            Color(0xFF4B89DC),  // Light blue color
-            Color(0xFF3568CC),  // Medium blue
-            Color(0xFF1A237E)   // Dark blue color
-        )
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(gradientBackground)
-    ) {
-        // Pixelated overlay effect
-        Canvas(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            val pixelSize = 20f
-            val width = size.width
-            val height = size.height
-
-            // Draw pixelated grid
-            for (x in 0 until (width / pixelSize).toInt()) {
-                for (y in 0 until (height / pixelSize).toInt()) {
-                    // Calculate position and size
-                    val left = x * pixelSize
-                    val top = y * pixelSize
-
-                    // Create random opacity for each pixel to create texture
-                    val opacity = if ((x + y) % 4 == 0) 0.1f else 0.05f
-
-                    // Draw pixel square with slightly different color
-                    drawRect(
-                        color = Color.Black.copy(alpha = opacity),
-                        topLeft = androidx.compose.ui.geometry.Offset(left, top),
-                        size = androidx.compose.ui.geometry.Size(pixelSize, pixelSize)
-                    )
-                }
-            }
-        }
-
+    PixelBackground {
         // Content Column
         Column(
             modifier = Modifier
@@ -103,7 +45,7 @@ fun LoginScreen(navController: NavController) {
                 fontSize = 60.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
-                style = pixelTextStyle,
+                style = AppTheme.pixelTextStyle,
                 textAlign = TextAlign.Center
             )
 
@@ -147,29 +89,36 @@ fun LoginScreen(navController: NavController) {
             // Blue Button
             Button(
                 onClick = {
+                    isLoading = true
+                    errorMessage = null
+
                     auth.signInWithEmailAndPassword(email, password)
                         .addOnCompleteListener { task ->
+                            isLoading = false
                             if (task.isSuccessful) {
-                                // Navigate to welcome screen instead of main menu
-                                navController.navigate("main_menu") {
-                                    popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
-                                }
+                                // Navigate to main menu on success
+                                navigationController.navigateToMainMenu()
                             } else {
                                 errorMessage = task.exception?.message
                             }
                         }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88E5)),
+                enabled = !isLoading,
+                colors = ButtonDefaults.buttonColors(containerColor = AppTheme.blueButtonColor),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
             ) {
-                Text(
-                    "Login",
-                    fontSize = 26.sp,
-                    color = Color.White,
-                    style = pixelTextStyle
-                )
+                if (isLoading) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Text(
+                        "Login",
+                        fontSize = 26.sp,
+                        color = Color.White,
+                        style = AppTheme.pixelTextStyle
+                    )
+                }
             }
 
             errorMessage?.let {
@@ -178,7 +127,7 @@ fun LoginScreen(navController: NavController) {
                     text = it,
                     color = Color.Red,
                     fontSize = 16.sp,
-                    fontFamily = pixelFontFamily
+                    fontFamily = AppTheme.pixelFontFamily
                 )
             }
 
@@ -186,14 +135,14 @@ fun LoginScreen(navController: NavController) {
 
             TextButton(
                 onClick = {
-                    navController.navigate("signup")
+                    navigationController.navigateToSignup()
                 }
             ) {
                 Text(
                     "Don't have an account? Sign up",
                     color = Color.White,
                     fontSize = 18.sp,
-                    fontFamily = pixelFontFamily
+                    fontFamily = AppTheme.pixelFontFamily
                 )
             }
         }

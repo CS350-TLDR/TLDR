@@ -1,85 +1,27 @@
-package com.comp350.tldr
+package com.comp350.tldr.view.screens
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.comp350.tldr.controllers.NavigationController
+import com.comp350.tldr.view.components.PixelBackground
+import com.comp350.tldr.view.theme.AppTheme
+import androidx.compose.ui.geometry.Offset
 
-// Profile screen with back button
 @Composable
 fun ProfileScreen(navController: NavController) {
-    // Define the pixel font family - same as other screens
-    val pixelFontFamily = FontFamily(
-        Font(R.font.rainyhearts, FontWeight.Normal)
-    )
+    val navigationController = NavigationController(navController)
 
-    // Text style with pixel font and outline
-    val pixelTextStyle = TextStyle(
-        fontFamily = pixelFontFamily,
-        shadow = Shadow(
-            color = Color.Black,
-            blurRadius = 2f,
-            offset = androidx.compose.ui.geometry.Offset(6f, 6f)
-        )
-    )
-
-    // Create blue to dark blue gradient background - same as other screens
-    val gradientBackground = Brush.verticalGradient(
-        colors = listOf(
-            Color(0xFF4B89DC),  // Light blue color
-            Color(0xFF3568CC),  // Medium blue
-            Color(0xFF1A237E)   // Dark blue color
-        )
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(gradientBackground)
-    ) {
-        // Pixelated overlay effect - same as other screens
-        Canvas(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            val pixelSize = 20f
-            val width = size.width
-            val height = size.height
-
-            // Draw pixelated grid
-            for (x in 0 until (width / pixelSize).toInt()) {
-                for (y in 0 until (height / pixelSize).toInt()) {
-                    // Calculate position and size
-                    val left = x * pixelSize
-                    val top = y * pixelSize
-
-                    // Create random opacity for each pixel to create texture
-                    val opacity = if ((x + y) % 4 == 0) 0.1f else 0.05f
-
-                    // Draw pixel square with slightly different color
-                    drawRect(
-                        color = Color.Black.copy(alpha = opacity),
-                        topLeft = androidx.compose.ui.geometry.Offset(left, top),
-                        size = androidx.compose.ui.geometry.Size(pixelSize, pixelSize)
-                    )
-                }
-            }
-        }
-
+    PixelBackground {
         // Content
         Column(
             modifier = Modifier
@@ -94,7 +36,7 @@ fun ProfileScreen(navController: NavController) {
                 fontSize = 60.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
-                style = pixelTextStyle,
+                style = AppTheme.pixelTextStyle,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -121,7 +63,7 @@ fun ProfileScreen(navController: NavController) {
                         text = "Profile Screen\n(Work in Progress)",
                         fontSize = 24.sp,
                         color = Color.White,
-                        fontFamily = pixelFontFamily,
+                        fontFamily = AppTheme.pixelFontFamily,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -132,7 +74,7 @@ fun ProfileScreen(navController: NavController) {
             // Back button
             Button(
                 onClick = {
-                    navController.popBackStack()
+                    navigationController.navigateBack()
                 },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.White
@@ -146,12 +88,11 @@ fun ProfileScreen(navController: NavController) {
                 Text(
                     text = "Back to Main Menu",
                     fontSize = 26.sp,
-                    color = Color(0xFF1A237E),
-                    style = pixelTextStyle.copy(
-                        shadow = Shadow(
-                            color = Color.Black,
+                    color = AppTheme.darkBlueButtonColor,
+                    style = AppTheme.pixelTextStyle.copy(
+                        shadow = AppTheme.pixelTextStyle.shadow?.copy(
                             blurRadius = 1f,
-                            offset = androidx.compose.ui.geometry.Offset(2f, 2f)
+                            offset = Offset(2f, 2f)
                         )
                     )
                 )

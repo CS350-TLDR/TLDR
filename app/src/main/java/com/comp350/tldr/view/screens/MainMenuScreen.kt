@@ -1,6 +1,6 @@
-package com.comp350.tldr
+// ui/theme/screens/MainMenuScreen.kt
+package com.comp350.tldr.view.screens
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -11,14 +11,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -29,11 +24,18 @@ import android.content.Intent
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.ui.geometry.Offset
+import com.comp350.tldr.R
+import com.comp350.tldr.controllers.NavigationController
+import com.comp350.tldr.view.components.PixelBackground
+import com.comp350.tldr.view.theme.AppTheme
+import com.comp350.tldr.model.services.PopQuizService
 
 @Composable
-fun MainMenuScreen(navController: NavController, context: Context) {
+fun MainMenuScreen(navController: NavController) {
     // Use LocalContext to ensure valid context
     val localContext = LocalContext.current
+    val navigationController = NavigationController(navController)
 
     // State variables
     var selectedTopic by remember { mutableStateOf("Python") }
@@ -50,77 +52,11 @@ fun MainMenuScreen(navController: NavController, context: Context) {
     // List of available activities
     val activities = listOf("Trivia", "Video")
 
-    // Define the pixel font family
-    val pixelFontFamily = FontFamily(
-        Font(R.font.rainyhearts, FontWeight.Normal)
-    )
-
-    // Text style with pixel font and thick black outline
-    val pixelTextStyle = TextStyle(
-        fontFamily = pixelFontFamily,
-        shadow = Shadow(
-            color = Color.Black,
-            blurRadius = 2f,
-            offset = androidx.compose.ui.geometry.Offset(6f, 6f)
-        )
-    )
-
-    // Smaller text style with less dramatic shadow
-    val pixelTextStyleSmall = TextStyle(
-        fontFamily = pixelFontFamily,
-        shadow = Shadow(
-            color = Color.Black,
-            blurRadius = 1f,
-            offset = androidx.compose.ui.geometry.Offset(2f, 2f)
-        )
-    )
-
-    // Create blue to dark blue gradient
-    val gradientBackground = Brush.verticalGradient(
-        colors = listOf(
-            Color(0xFF4B89DC),  // Light blue color
-            Color(0xFF3568CC),  // Medium blue
-            Color(0xFF1A237E)   // Dark blue color
-        )
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(gradientBackground)
-    ) {
-        // Pixelated overlay effect
-        Canvas(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            val pixelSize = 20f
-            val width = size.width
-            val height = size.height
-
-            // Draw pixelated grid
-            for (x in 0 until (width / pixelSize).toInt()) {
-                for (y in 0 until (height / pixelSize).toInt()) {
-                    // Calculate position and size
-                    val left = x * pixelSize
-                    val top = y * pixelSize
-
-                    // Create random opacity for each pixel to create texture
-                    val opacity = if ((x + y) % 4 == 0) 0.1f else 0.05f
-
-                    // Draw pixel square with slightly different color
-                    drawRect(
-                        color = Color.Black.copy(alpha = opacity),
-                        topLeft = androidx.compose.ui.geometry.Offset(left, top),
-                        size = androidx.compose.ui.geometry.Size(pixelSize, pixelSize)
-                    )
-                }
-            }
-        }
-
+    PixelBackground {
         // Profile button in bottom right corner - Now larger with text
         Button(
             onClick = {
-                navController.navigate("profile")
+                navigationController.navigateToProfile()
             },
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color.White
@@ -135,12 +71,11 @@ fun MainMenuScreen(navController: NavController, context: Context) {
             Text(
                 text = "Profile",
                 fontSize = 22.sp,
-                color = Color(0xFF1A237E),
-                style = pixelTextStyle.copy(
-                    shadow = Shadow(
-                        color = Color.Black,
+                color = AppTheme.darkBlueButtonColor,
+                style = AppTheme.pixelTextStyle.copy(
+                    shadow = AppTheme.pixelTextStyle.shadow?.copy(
                         blurRadius = 1f,
-                        offset = androidx.compose.ui.geometry.Offset(2f, 2f)
+                        offset = Offset(2f, 2f)
                     )
                 )
             )
@@ -176,7 +111,7 @@ fun MainMenuScreen(navController: NavController, context: Context) {
                     fontSize = 36.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
-                    style = pixelTextStyle,
+                    style = AppTheme.pixelTextStyle,
                     textAlign = TextAlign.Center
                 )
 
@@ -196,8 +131,8 @@ fun MainMenuScreen(navController: NavController, context: Context) {
                         Text(
                             text = selectedTopic,
                             fontSize = 26.sp,
-                            color = Color(0xFF1A237E),
-                            style = pixelTextStyleSmall,
+                            color = AppTheme.darkBlueButtonColor,
+                            style = AppTheme.pixelTextStyleSmall,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -215,7 +150,7 @@ fun MainMenuScreen(navController: NavController, context: Context) {
                                     Text(
                                         text = topic,
                                         fontSize = 24.sp,
-                                        fontFamily = pixelFontFamily
+                                        fontFamily = AppTheme.pixelFontFamily
                                     )
                                 },
                                 onClick = {
@@ -227,7 +162,7 @@ fun MainMenuScreen(navController: NavController, context: Context) {
                                         try {
                                             startPopupService(localContext, selectedTopic, selectedActivity)
                                         } catch (e: Exception) {
-                                            Log.e("MainMenuScreen", "Error starting service", e)
+                                            Log.e("MainMenuScreen", "Error updating service", e)
                                             Toast.makeText(localContext, "Error updating service", Toast.LENGTH_SHORT).show()
                                         }
                                     }
@@ -252,7 +187,7 @@ fun MainMenuScreen(navController: NavController, context: Context) {
                     fontSize = 36.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
-                    style = pixelTextStyle,
+                    style = AppTheme.pixelTextStyle,
                     textAlign = TextAlign.Center
                 )
 
@@ -272,8 +207,8 @@ fun MainMenuScreen(navController: NavController, context: Context) {
                         Text(
                             text = selectedActivity,
                             fontSize = 26.sp,
-                            color = Color(0xFF1A237E),
-                            style = pixelTextStyleSmall,
+                            color = AppTheme.darkBlueButtonColor,
+                            style = AppTheme.pixelTextStyleSmall,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -291,7 +226,7 @@ fun MainMenuScreen(navController: NavController, context: Context) {
                                     Text(
                                         text = activity,
                                         fontSize = 24.sp,
-                                        fontFamily = pixelFontFamily
+                                        fontFamily = AppTheme.pixelFontFamily
                                     )
                                 },
                                 onClick = {
@@ -303,7 +238,7 @@ fun MainMenuScreen(navController: NavController, context: Context) {
                                         try {
                                             startPopupService(localContext, selectedTopic, selectedActivity)
                                         } catch (e: Exception) {
-                                            Log.e("MainMenuScreen", "Error starting service", e)
+                                            Log.e("MainMenuScreen", "Error updating service", e)
                                             Toast.makeText(localContext, "Error updating service", Toast.LENGTH_SHORT).show()
                                         }
                                     }
@@ -331,7 +266,7 @@ fun MainMenuScreen(navController: NavController, context: Context) {
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
-                        fontFamily = pixelFontFamily,
+                        fontFamily = AppTheme.pixelFontFamily,
                         textAlign = TextAlign.Center
                     )
 
@@ -384,7 +319,7 @@ fun MainMenuScreen(navController: NavController, context: Context) {
                             text = "Popups for $selectedActivity will appear every 60 seconds",
                             fontSize = 18.sp,
                             color = Color.White,
-                            fontFamily = pixelFontFamily,
+                            fontFamily = AppTheme.pixelFontFamily,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -428,7 +363,7 @@ fun MainMenuScreen(navController: NavController, context: Context) {
                     }
                 },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF1E88E5)
+                    containerColor = AppTheme.blueButtonColor
                 ),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier
@@ -440,7 +375,7 @@ fun MainMenuScreen(navController: NavController, context: Context) {
                     text = "Test Popup Now",
                     fontSize = 22.sp,
                     color = Color.White,
-                    style = pixelTextStyleSmall
+                    style = AppTheme.pixelTextStyleSmall
                 )
             }
 

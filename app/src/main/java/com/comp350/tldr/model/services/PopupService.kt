@@ -1,4 +1,4 @@
-package com.comp350.tldr
+package com.comp350.tldr.model.services
 
 import android.app.Service
 import android.content.Context
@@ -11,7 +11,6 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import android.view.Gravity
-import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
@@ -22,7 +21,8 @@ import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.VideoView
-import com.comp350.tldr.unusedfeatures.Question
+import com.comp350.tldr.R
+import com.comp350.tldr.classicstuff.Question
 import com.google.firebase.auth.FirebaseAuth
 import java.util.Timer
 import java.util.TimerTask

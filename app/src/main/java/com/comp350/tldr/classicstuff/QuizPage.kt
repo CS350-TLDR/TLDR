@@ -1,4 +1,4 @@
-package com.comp350.tldr.unusedfeatures
+package com.comp350.tldr.classicstuff
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
-import com.comp350.tldr.unusedfeatures.Question
 import com.comp350.tldr.R
 
 
