@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.comp350.tldr.R
-import com.comp350.tldr.controllers.NavigationController
+import com.comp350.tldr.controller.navigation.NavigationController
 import com.comp350.tldr.view.components.PixelBackground
 import com.comp350.tldr.view.theme.AppTheme
 import kotlinx.coroutines.delay

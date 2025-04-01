@@ -1,8 +1,7 @@
-package com.comp350.tldr.controllers
+package com.comp350.tldr.controller.navigation
 
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import com.comp350.tldr.controller.navigation.NavRoutes
 
 class NavigationController(private val navController: NavController) {
 
