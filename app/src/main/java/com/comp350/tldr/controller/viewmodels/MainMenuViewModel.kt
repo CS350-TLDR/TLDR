@@ -44,4 +44,18 @@ class MainMenuViewModel : ViewModel() {
         val quizController = QuizController(context)
         quizController.startPopupService(_selectedTopic.value, _selectedActivity.value, testMode = true)
     }
+
+    private val _isTopicExpanded = MutableStateFlow(false)
+    val isTopicExpanded: StateFlow<Boolean> = _isTopicExpanded
+
+    private val _isActivityExpanded = MutableStateFlow(false)
+    val isActivityExpanded: StateFlow<Boolean> = _isActivityExpanded
+
+    fun toggleTopicDropdown() {
+        _isTopicExpanded.value = !_isTopicExpanded.value
+    }
+
+    fun toggleActivityDropdown() {
+        _isActivityExpanded.value = !_isActivityExpanded.value
+    }
 }

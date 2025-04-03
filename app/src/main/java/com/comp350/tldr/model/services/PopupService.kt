@@ -205,7 +205,7 @@ class PopQuizService : Service() {
             Log.e(TAG, "Error in onStartCommand", e)
         }
 
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     private fun startScheduler() {
