@@ -12,9 +12,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import com.comp350.tldr.view.theme.AppTheme
 
-
-Button(
-                onClick = {
+@Composable fun SignupButton() {
+    Button(
+        onClick = {
                     when {
                         email.isBlank() || password.isBlank() || confirmPassword.isBlank() -> {
                             errorMessage = "All fields are required"
@@ -48,3 +48,5 @@ Button(
                     .fillMaxWidth()
                     .height(56.dp)
             )
+
+}
