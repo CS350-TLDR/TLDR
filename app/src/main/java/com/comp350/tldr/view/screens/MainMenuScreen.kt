@@ -45,7 +45,7 @@ fun MainMenuScreen(
     val selectedActivity by viewModel.selectedActivity.collectAsState()
     val isPopupEnabled by viewModel.isPopupEnabled.collectAsState()
 
-    // State for dropdowns - since your ViewModel may not have this yet
+    
     var topicExpanded by remember { mutableStateOf(false) }
     var activityExpanded by remember { mutableStateOf(false) }
 
@@ -146,16 +146,15 @@ fun MainMenuScreen(
             ProfileButton(
                 navController = navController,
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)  // Position in bottom right
-                    .padding(end = 24.dp, bottom = 32.dp)  // Move slightly left (end padding) and up (bottom padding)
+                    .align(Alignment.BottomEnd)  
+                    .padding(end = 24.dp, bottom = 32.dp)  
             )
         }
     }
 }
 
-// Smaller composables for better readability and maintainability
-@Composable
-private fun RobotHeader() {
+
+@Composable private fun RobotHeader() {
     Image(
         painter = painterResource(id = R.drawable.robot),
         contentDescription = "Robot mascot",
@@ -167,8 +166,7 @@ private fun RobotHeader() {
     Spacer(modifier = Modifier.height(32.dp))
 }
 
-@Composable
-private fun TopicSelector(
+@Composable private fun TopicSelector(
     selectedTopic: String,
     isExpanded: Boolean,
     onToggleDropdown: () -> Unit,
@@ -238,8 +236,7 @@ private fun TopicSelector(
     Spacer(modifier = Modifier.height(24.dp))
 }
 
-@Composable
-private fun ActivitySelector(
+@Composable private fun ActivitySelector(
     selectedActivity: String,
     isExpanded: Boolean,
     onToggleDropdown: () -> Unit,
