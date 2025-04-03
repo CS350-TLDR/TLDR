@@ -14,7 +14,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.comp350.tldr.controllers.NavigationController
+import com.comp350.tldr.controller.navigation.NavigationController
 import com.comp350.tldr.view.components.PixelBackground
 import com.comp350.tldr.view.theme.AppTheme
 import com.google.firebase.auth.FirebaseAuth
