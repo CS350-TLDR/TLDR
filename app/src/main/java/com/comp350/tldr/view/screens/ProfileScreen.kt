@@ -100,6 +100,7 @@ private fun ProfileScreenTitle() {
     )
 }
 
+//draws the Robot on the profile page 
 @Composable private fun ProfileRobotImage() {
     Image(
         //sets the image source
