@@ -103,11 +103,15 @@ private fun ProfileScreenTitle() {
 @Composable
 private fun ProfileRobotImage() {
     Image(
+        //sets the image source
         painter = painterResource(id = R.drawable.robot),
+        //sets the description of the image, idk if we need this tbh
         contentDescription = "Robot character",
-        modifier = Modifier
-            .size(120.dp)
-            .padding(bottom = 16.dp)
+        //Sets the size of the image to 120 
+        //padding basically makes an invisible barrier around an image
+        //prevents clutter and stuff
+        //yeah
+        modifier = Modifier.size(120.dp).padding(bottom = 16.dp)
     )
 }
 
