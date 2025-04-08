@@ -17,8 +17,8 @@ class MainMenuViewModel : ViewModel() {
     val isPopupEnabled: StateFlow<Boolean> = _isPopupEnabled
 
     // Available options
-    val availableTopics = listOf("Python")
-    val availableActivities = listOf("Trivia", "Video")
+    val availableTopics = listOf("Python", "Java", "JavaScript", "C++")
+    val availableActivities = listOf("Trivia", "Video", "FlashCard")
 
     fun updateTopic(topic: String) {
         _selectedTopic.value = topic
