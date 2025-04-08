@@ -16,7 +16,6 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.comp350.tldr.controller.navigation.NavigationController
 import com.comp350.tldr.view.components.PixelBackground
-import com.comp350.tldr.view.components.SignupButton
 import com.comp350.tldr.view.theme.AppTheme
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.geometry.Offset
@@ -109,9 +108,43 @@ fun SignupScreen(navController: NavController) {
             )
 
             Spacer(modifier = Modifier.height(32.dp))
-            SignupButton()
 
-             {
+            // Sign Up Button (white button with dark blue text)
+            Button(
+                onClick = {
+                    when {
+                        email.isBlank() || password.isBlank() || confirmPassword.isBlank() -> {
+                            errorMessage = "All fields are required"
+                        }
+                        password != confirmPassword -> {
+                            errorMessage = "Passwords do not match"
+                        }
+                        password.length < 6 -> {
+                            errorMessage = "Password must be at least 6 characters"
+                        }
+                        else -> {
+                            isLoading = true
+                            errorMessage = null
+
+                            auth.createUserWithEmailAndPassword(email, password)
+                                .addOnCompleteListener { task ->
+                                    isLoading = false
+                                    if (task.isSuccessful) {
+                                        // Navigate to welcome screen
+                                        navigationController.navigateToWelcome()
+                                    } else {
+                                        errorMessage = task.exception?.message ?: "Sign up failed"
+                                    }
+                                }
+                        }
+                    }
+                },
+                enabled = !isLoading,
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) {
                 if (isLoading) {
                     CircularProgressIndicator(color = AppTheme.darkBlueButtonColor, modifier = Modifier.size(24.dp))
                 } else {
