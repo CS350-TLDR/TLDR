@@ -11,7 +11,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.comp350.tldr.controller.navigation.NavRoutes
-import com.comp350.tldr.ui.theme.screens.*
 import com.comp350.tldr.view.screens.LoginScreen
 import com.comp350.tldr.view.screens.MainMenuScreen
 import com.comp350.tldr.view.screens.ProfileScreen

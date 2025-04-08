@@ -6,8 +6,3 @@ data class Question(
     val correctAnswerIndex: Int
 )
 
-data class QuizResult(
-    val score: Int,
-    val totalQuestions: Int,
-    val topic: String
-)

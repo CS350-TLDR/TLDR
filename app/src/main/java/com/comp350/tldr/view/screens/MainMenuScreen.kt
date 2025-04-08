@@ -50,7 +50,7 @@ fun MainMenuScreen(
     var activityExpanded by remember { mutableStateOf(false) }
 
     PixelBackground {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize())  {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -120,35 +120,12 @@ fun MainMenuScreen(
                     selectedActivity = selectedActivity
                 )
 
-                // Test Button
-                TestButton(
-                    onTest = {
-                        if (!Settings.canDrawOverlays(localContext)) {
-                            // Request permission
-                            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
-                            localContext.startActivity(intent)
-                            Toast.makeText(
-                                localContext,
-                                "Please grant overlay permission first",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        } else {
-                            Toast.makeText(localContext, "Testing popup...", Toast.LENGTH_SHORT).show()
-                            viewModel.testPopup(localContext)
-                        }
-                    }
-                )
-
-                // Extra space at the bottom to account for profile button
                 Spacer(modifier = Modifier.height(80.dp))
             }
 
-            ProfileButton(
-                navController = navController,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)  
-                    .padding(end = 24.dp, bottom = 32.dp)  
-            )
+            ProfileButton(navController)
+
+
         }
     }
 }
@@ -360,55 +337,42 @@ private fun PopupControls(
     Spacer(modifier = Modifier.height(32.dp))
 }
 
-@Composable
-private fun TestButton(onTest: () -> Unit) {
-    Button(
-        onClick = onTest,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = AppTheme.blueButtonColor
-        ),
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 32.dp)
-            .height(56.dp)
-    ) {
-        Text(
-            text = "Test Popup Now",
-            fontSize = 22.sp,
-            color = Color.White,
-            style = AppTheme.pixelTextStyleSmall
+
+//Profile Button Text
+@Composable private fun profilebuttonDisplayText() {
+
+    Text(
+        text = "Profile",
+        fontSize = 22.sp,
+        color = AppTheme.darkBlueButtonColor,
+        style = AppTheme.pixelTextStyle.copy(
+            shadow = AppTheme.pixelTextStyle.shadow?.copy(
+                blurRadius = 1f,
+                offset = Offset(2f, 2f)
+            )
         )
+    )
+}
+
+
+//Displays box and Button Logic
+@Composable private fun profilebuttonLogic(navController: NavController, content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxSize().padding(end = 24.dp, bottom = 32.dp),
+        contentAlignment = Alignment.BottomEnd
+    ) {
+        Button(
+            onClick = { navController.navigate("profile") },
+            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.height(50.dp).width(120.dp)
+        ) {
+            content()
+        }
+
     }
 }
 
-@Composable
-private fun ProfileButton(
-    navController: NavController,
-    modifier: Modifier = Modifier  // Default empty modifier if none provided
-) {
-    Button(
-        onClick = {
-            navController.navigate("profile")
-        },
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.White
-        ),
-        shape = RoundedCornerShape(12.dp),
-        modifier = modifier
-            .height(50.dp)
-            .width(120.dp)
-    ) {
-        Text(
-            text = "Profile",
-            fontSize = 22.sp,
-            color = AppTheme.darkBlueButtonColor,
-            style = AppTheme.pixelTextStyle.copy(
-                shadow = AppTheme.pixelTextStyle.shadow?.copy(
-                    blurRadius = 1f,
-                    offset = Offset(2f, 2f)
-                )
-            )
-        )
-    }
+@Composable private fun ProfileButton(navController: NavController) {
+    profilebuttonLogic(navController) { profilebuttonDisplayText() }
 }

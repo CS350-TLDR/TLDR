@@ -31,7 +31,6 @@ fun LoginScreen(navController: NavController) {
     var isLoading by remember { mutableStateOf(false) }
 
     PixelBackground {
-        // Content Column
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -39,111 +38,166 @@ fun LoginScreen(navController: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                "Log In",
-                fontSize = 60.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                style = AppTheme.pixelTextStyle,
-                textAlign = TextAlign.Center
-            )
+            LoginScreenTitle()
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Email input field with white background
-            TextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email", color = Color.Gray) },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White,
-                    focusedTextColor = Color.Black,
-                    unfocusedTextColor = Color.Black
-                ),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.fillMaxWidth()
+            EmailInputField(
+                email = email,
+                onEmailChange = { email = it }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Password input field with white background
-            TextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Password", color = Color.Gray) },
-                visualTransformation = PasswordVisualTransformation(),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White,
-                    focusedTextColor = Color.Black,
-                    unfocusedTextColor = Color.Black
-                ),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.fillMaxWidth()
+            PasswordInputField(
+                password = password,
+                onPasswordChange = { password = it }
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Blue Button
-            Button(
-                onClick = {
-                    isLoading = true
-                    errorMessage = null
+            LoginButton(
+                isLoading = isLoading,
+                email = email,
+                password = password,
+                auth = auth,
+                navigationController = navigationController,
+                onLoadingChange = { isLoading = it },
+                onErrorMessageChange = { errorMessage = it }
+            )
 
-                    auth.signInWithEmailAndPassword(email, password)
-                        .addOnCompleteListener { task ->
-                            isLoading = false
-                            if (task.isSuccessful) {
-                                // Navigate to main menu on success
-                                navigationController.navigateToMainMenu()
-                            } else {
-                                errorMessage = task.exception?.message
-                            }
-                        }
-                },
-                enabled = !isLoading,
-                colors = ButtonDefaults.buttonColors(containerColor = AppTheme.blueButtonColor),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                } else {
-                    Text(
-                        "Login",
-                        fontSize = 26.sp,
-                        color = Color.White,
-                        style = AppTheme.pixelTextStyle
-                    )
-                }
-            }
-
-            errorMessage?.let {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = it,
-                    color = Color.Red,
-                    fontSize = 16.sp,
-                    fontFamily = AppTheme.pixelFontFamily
-                )
-            }
+            ErrorMessageDisplay(errorMessage)
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            TextButton(
-                onClick = {
-                    navigationController.navigateToSignup()
-                }
-            ) {
-                Text(
-                    "Don't have an account? Sign up",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontFamily = AppTheme.pixelFontFamily
-                )
-            }
+            SignupNavigationButton(navigationController)
         }
+    }
+}
+
+@Composable
+private fun LoginScreenTitle() {
+    Text(
+        "Log In",
+        fontSize = 60.sp,
+        fontWeight = FontWeight.Bold,
+        color = Color.White,
+        style = AppTheme.pixelTextStyle,
+        textAlign = TextAlign.Center
+    )
+}
+
+@Composable
+private fun EmailInputField(
+    email: String,
+    onEmailChange: (String) -> Unit
+) {
+    TextField(
+        value = email,
+        onValueChange = onEmailChange,
+        label = { Text("Email", color = Color.Gray) },
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            focusedTextColor = Color.Black,
+            unfocusedTextColor = Color.Black
+        ),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+@Composable
+private fun PasswordInputField(
+    password: String,
+    onPasswordChange: (String) -> Unit
+) {
+    TextField(
+        value = password,
+        onValueChange = onPasswordChange,
+        label = { Text("Password", color = Color.Gray) },
+        visualTransformation = PasswordVisualTransformation(),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            focusedTextColor = Color.Black,
+            unfocusedTextColor = Color.Black
+        ),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+@Composable
+private fun LoginButton(
+    isLoading: Boolean,
+    email: String,
+    password: String,
+    auth: FirebaseAuth,
+    navigationController: NavigationController,
+    onLoadingChange: (Boolean) -> Unit,
+    onErrorMessageChange: (String?) -> Unit
+) {
+    Button(
+        onClick = {
+            onLoadingChange(true)
+            onErrorMessageChange(null)
+
+            auth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener { task ->
+                    onLoadingChange(false)
+                    if (task.isSuccessful) {
+                        // Navigate to main menu on success
+                        navigationController.navigateToMainMenu()
+                    } else {
+                        onErrorMessageChange(task.exception?.message)
+                    }
+                }
+        },
+        enabled = !isLoading,
+        colors = ButtonDefaults.buttonColors(containerColor = AppTheme.blueButtonColor),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+        } else {
+            Text(
+                "Login",
+                fontSize = 26.sp,
+                color = Color.White,
+                style = AppTheme.pixelTextStyle
+            )
+        }
+    }
+}
+
+@Composable
+private fun ErrorMessageDisplay(errorMessage: String?) {
+    errorMessage?.let {
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = it,
+            color = Color.Red,
+            fontSize = 16.sp,
+            fontFamily = AppTheme.pixelFontFamily
+        )
+    }
+}
+
+@Composable
+private fun SignupNavigationButton(navigationController: NavigationController) {
+    TextButton(
+        onClick = {
+            navigationController.navigateToSignup()
+        }
+    ) {
+        Text(
+            "Don't have an account? Sign up",
+            color = Color.White,
+            fontSize = 18.sp,
+            fontFamily = AppTheme.pixelFontFamily
+        )
     }
 }
