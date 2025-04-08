@@ -100,8 +100,7 @@ private fun ProfileScreenTitle() {
     )
 }
 
-@Composable
-private fun ProfileRobotImage() {
+@Composable private fun ProfileRobotImage() {
     Image(
         //sets the image source
         painter = painterResource(id = R.drawable.robot),
