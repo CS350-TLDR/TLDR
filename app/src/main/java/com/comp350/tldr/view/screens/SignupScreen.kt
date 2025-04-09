@@ -7,7 +7,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-//////////////import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -20,13 +19,12 @@ import com.comp350.tldr.view.theme.AppTheme
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextDecoration
 import com.comp350.tldr.view.theme.AppTheme.pixelTextStyle
 
 @Composable
 fun SignupScreen(navController: NavController) {
-    //////////val context = LocalContext.current
+
     val auth = FirebaseAuth.getInstance()
     val navigationController = NavigationController(navController)
 
@@ -112,7 +110,7 @@ fun SignupScreen(navController: NavController) {
             )
 
             Spacer(modifier = Modifier.height(32.dp))
-            /////////////////SignupButton()
+
 
             Button(
                 onClick = {
