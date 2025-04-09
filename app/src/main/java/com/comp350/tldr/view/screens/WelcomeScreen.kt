@@ -34,7 +34,7 @@ fun WelcomeScreen(navController: NavController) {
     val coroutineScope = rememberCoroutineScope()
     val navigationController = NavigationController(navController)
 
-    PixelBackground {
+    PixelBackground { // Invokes PixelBackground.kt from view/components
         // Animated visibility for fade-in/out effects on the welcome content
         AnimatedVisibility(
             visible = isVisible,
@@ -95,7 +95,7 @@ fun WelcomeScreen(navController: NavController) {
                                 // Trigger fade-out before navigating
                                 isVisible = false
                                 delay(500)
-                                navigationController.navigateToLogin()
+                                navigationController.navigateToLogin()//navigateToMainMenu()   //////////////navigationController.navigateToLogin()
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = AppTheme.blueButtonColor),

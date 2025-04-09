@@ -7,7 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+//////////////import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -16,14 +16,17 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.comp350.tldr.controller.navigation.NavigationController
 import com.comp350.tldr.view.components.PixelBackground
-import com.comp350.tldr.view.components.SignupButton
 import com.comp350.tldr.view.theme.AppTheme
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextDecoration
+import com.comp350.tldr.view.theme.AppTheme.pixelTextStyle
 
 @Composable
 fun SignupScreen(navController: NavController) {
-    val context = LocalContext.current
+    //////////val context = LocalContext.current
     val auth = FirebaseAuth.getInstance()
     val navigationController = NavigationController(navController)
 
@@ -48,7 +51,7 @@ fun SignupScreen(navController: NavController) {
                 fontSize = 60.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
-                style = AppTheme.pixelTextStyle,
+                style = pixelTextStyle,
                 textAlign = TextAlign.Center
             )
 
@@ -109,50 +112,97 @@ fun SignupScreen(navController: NavController) {
             )
 
             Spacer(modifier = Modifier.height(32.dp))
-            SignupButton()
+            /////////////////SignupButton()
 
-             {
-                if (isLoading) {
-                    CircularProgressIndicator(color = AppTheme.darkBlueButtonColor, modifier = Modifier.size(24.dp))
-                } else {
-                    Text(
-                        "Sign Up",
-                        fontSize = 26.sp,
-                        color = AppTheme.darkBlueButtonColor,
-                        style = AppTheme.pixelTextStyle.copy(
-                            shadow = AppTheme.pixelTextStyle.shadow?.copy(
-                                blurRadius = 2f,
-                                offset = Offset(3f, 3f)
-                            )
+            Button(
+                onClick = {
+                    when {
+                        email.isBlank() || password.isBlank() || confirmPassword.isBlank() -> {
+                            errorMessage = "All fields are required"
+                        }
+
+                        password != confirmPassword -> {
+                            errorMessage = "Passwords do not match"
+                        }
+
+                        password.length < 6 -> {
+                            errorMessage = "Password must be at least 6 characters"
+                        }
+
+                        else -> {
+                            isLoading = true
+                            errorMessage = null
+
+                            auth.createUserWithEmailAndPassword(email, password)
+                                .addOnCompleteListener { task ->
+                                    isLoading = false
+                                    if (task.isSuccessful) {
+                                        // Navigate to welcome screen
+                                        navigationController.navigateToWelcome()
+                                    } else {
+                                        errorMessage = task.exception?.message ?: "Sign up failed"
+                                    }
+                                }
+                        }
+                    }
+                },
+                enabled = !isLoading,
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            )
+
+            {
+                Text(
+                    "Sign Up",
+                    fontSize = 26.sp,
+                    color = Color(0xFF1A237E),
+                    style = pixelTextStyle.copy(
+                        shadow = Shadow(
+                            color = Color.Black,
+                            blurRadius = 2f,
+                            offset = Offset(3f, 3f)
                         )
                     )
-                }
-            }
-
-            // Error message
-            errorMessage?.let {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = it,
-                    color = Color.Red,
-                    fontSize = 16.sp,
-                    fontFamily = AppTheme.pixelFontFamily
                 )
             }
+        }
 
-            Spacer(modifier = Modifier.height(24.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Bottom
 
+        ) {
             // Link to login screen
-            TextButton(onClick = {
-                navigationController.navigateToLogin()
-            }) {
+            TextButton(onClick = { navigationController.navigateToLogin() },
+                Modifier.offset(0.dp, (-180).dp)) {
                 Text(
                     "Already have an account? Log in",
                     color = Color.White,
                     fontSize = 18.sp,
-                    fontFamily = AppTheme.pixelFontFamily
+                    fontFamily = AppTheme.pixelFontFamily,
+                    textDecoration = TextDecoration.Underline,
                 )
             }
         }
     }
+    // Error message
+    errorMessage?.let {
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = it,
+            color = Color.Red,
+            fontSize = 16.sp,
+            fontFamily = AppTheme.pixelFontFamily
+        )
+    }
 }
+
+
+
+
+
