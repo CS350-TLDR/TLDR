@@ -7,55 +7,25 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 class MainMenuViewModel : ViewModel() {
-    private val _selectedTopic = MutableStateFlow("Python")
-    val selectedTopic: StateFlow<String> = _selectedTopic
+    private val _topic = MutableStateFlow("Python")
+    val topic: StateFlow<String> = _topic
 
-    private val _selectedActivity = MutableStateFlow("Trivia")
-    val selectedActivity: StateFlow<String> = _selectedActivity
+    private val _activity = MutableStateFlow("Trivia")
+    val activity: StateFlow<String> = _activity
 
-    private val _isPopupEnabled = MutableStateFlow(false)
-    val isPopupEnabled: StateFlow<Boolean> = _isPopupEnabled
+    private val _popupEnabled = MutableStateFlow(false)
+    val popupEnabled: StateFlow<Boolean> = _popupEnabled
 
-    // Available options
-    val availableTopics = listOf("Python", "Java", "JavaScript", "C++")
-    val availableActivities = listOf("Trivia", "Video", "FlashCard")
+    val topics = listOf("Python")
+    val activities = listOf("Trivia", "Video", "Flashcards")
 
-    fun updateTopic(topic: String) {
-        _selectedTopic.value = topic
-    }
+    fun setTopic(value: String) { _topic.value = value }
+    fun setActivity(value: String) { _activity.value = value }
 
-    fun updateActivity(activity: String) {
-        _selectedActivity.value = activity
-    }
-
-    fun togglePopupService(enabled: Boolean, context: Context) {
-        val quizController = QuizController(context)
-
-        if (enabled) {
-            quizController.startPopupService(_selectedTopic.value, _selectedActivity.value)
-            _isPopupEnabled.value = true
-        } else {
-            quizController.stopPopupService()
-            _isPopupEnabled.value = false
-        }
-    }
-
-    fun testPopup(context: Context) {
-        val quizController = QuizController(context)
-        quizController.startPopupService(_selectedTopic.value, _selectedActivity.value, testMode = true)
-    }
-
-    private val _isTopicExpanded = MutableStateFlow(false)
-    val isTopicExpanded: StateFlow<Boolean> = _isTopicExpanded
-
-    private val _isActivityExpanded = MutableStateFlow(false)
-    val isActivityExpanded: StateFlow<Boolean> = _isActivityExpanded
-
-    fun toggleTopicDropdown() {
-        _isTopicExpanded.value = !_isTopicExpanded.value
-    }
-
-    fun toggleActivityDropdown() {
-        _isActivityExpanded.value = !_isActivityExpanded.value
+    fun togglePopup(enabled: Boolean, context: Context) {
+        val quiz = QuizController(context)
+        if (enabled) quiz.startPopupService(_topic.value, _activity.value)
+        else quiz.stopPopupService()
+        _popupEnabled.value = enabled
     }
 }
