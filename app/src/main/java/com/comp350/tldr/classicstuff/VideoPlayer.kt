@@ -16,11 +16,17 @@ import com.comp350.tldr.R
 @Composable
 fun VideoPlayer(modifier: Modifier = Modifier, onVideoFinished: () -> Unit) {
     val context = LocalContext.current
-    val videoUri = Uri.parse("android.resource://${context.packageName}/${R.raw.pythonbasics}")
 
+    val videoUris = listOf(
+        Uri.parse("android.resource://${context.packageName}/${R.raw.oop_vs_functional}"),
+        Uri.parse("android.resource://${context.packageName}/${R.raw.pythonbasics}"),
+        Uri.parse("android.resource://${context.packageName}/${R.raw.oop_spongeb}")
+    )
+
+    val videoUri = remember { videoUris.random() }
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
-            // Set the media item to play
+
             setMediaItem(MediaItem.fromUri(videoUri))
             prepare()
 

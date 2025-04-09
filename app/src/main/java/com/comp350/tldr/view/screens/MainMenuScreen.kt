@@ -1,6 +1,9 @@
-// view/screens/MainMenuScreen.kt
 package com.comp350.tldr.view.screens
 
+import android.content.Context
+import android.content.Intent
+import android.provider.Settings
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -18,361 +21,136 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
-import android.provider.Settings
-import android.content.Intent
-import android.util.Log
-import android.widget.Toast
-import androidx.compose.ui.geometry.Offset
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.comp350.tldr.R
 import com.comp350.tldr.controller.navigation.NavigationController
-import com.comp350.tldr.controller.viewmodels.MainMenuViewModel
+import com.comp350.tldr.controllers.QuizController
 import com.comp350.tldr.view.components.PixelBackground
 import com.comp350.tldr.view.theme.AppTheme
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import com.comp350.tldr.controller.viewmodels.MainMenuViewModel
 
+// -- MainScreen
 @Composable
-fun MainMenuScreen(
-    navController: NavController,
-    viewModel: MainMenuViewModel = viewModel()
-) {
-    // Use LocalContext to ensure valid context
-    val localContext = LocalContext.current
-    val navigationController = NavigationController(navController)
+fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewModel()) {
+    val ctx = LocalContext.current
+    val topic by vm.topic.collectAsState()
+    val activity by vm.activity.collectAsState()
+    val enabled by vm.popupEnabled.collectAsState()
 
-    // Collect states from ViewModel
-    val selectedTopic by viewModel.selectedTopic.collectAsState()
-    val selectedActivity by viewModel.selectedActivity.collectAsState()
-    val isPopupEnabled by viewModel.isPopupEnabled.collectAsState()
-
-    
-    var topicExpanded by remember { mutableStateOf(false) }
-    var activityExpanded by remember { mutableStateOf(false) }
+    var topicOpen by remember { mutableStateOf(false) }
+    var activityOpen by remember { mutableStateOf(false) }
 
     PixelBackground {
-        Box(modifier = Modifier.fillMaxSize())  {
+        Box(Modifier.fillMaxSize()) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
+                Modifier
                     .padding(16.dp)
+                    .fillMaxSize()
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Robot Header
                 RobotHeader()
 
-                // Topic Selector
-                TopicSelector(
-                    selectedTopic = selectedTopic,
-                    isExpanded = topicExpanded,
-                    onToggleDropdown = { topicExpanded = !topicExpanded },
-                    onTopicSelected = { topic ->
-                        viewModel.updateTopic(topic)
-                        topicExpanded = false
+                DropdownSelector("Topic", topic, topicOpen, { topicOpen = !topicOpen }, vm.topics) {
+                    vm.setTopic(it)
+                    topicOpen = false
+                    if (enabled) vm.togglePopup(true, ctx)
+                }
 
-                        // Update service if running
-                        if (isPopupEnabled) {
-                            viewModel.togglePopupService(true, localContext)
-                        }
-                    },
-                    availableTopics = viewModel.availableTopics
-                )
+                DropdownSelector("Activity", activity, activityOpen, { activityOpen = !activityOpen }, vm.activities) {
+                    vm.setActivity(it)
+                    activityOpen = false
+                    if (enabled) vm.togglePopup(true, ctx)
+                }
 
-                // Activity Selector
-                ActivitySelector(
-                    selectedActivity = selectedActivity,
-                    isExpanded = activityExpanded,
-                    onToggleDropdown = { activityExpanded = !activityExpanded },
-                    onActivitySelected = { activity ->
-                        viewModel.updateActivity(activity)
-                        activityExpanded = false
+                PopupToggle(enabled, activity) { toggled ->
+                    if (toggled && !Settings.canDrawOverlays(ctx)) {
+                        ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION))
+                        Toast.makeText(ctx, "Grant overlay permission for popups", Toast.LENGTH_LONG).show()
+                    } else {
+                        vm.togglePopup(toggled, ctx)
+                    }
+                }
 
-                        // Update service if running
-                        if (isPopupEnabled) {
-                            viewModel.togglePopupService(true, localContext)
-                        }
-                    },
-                    availableActivities = viewModel.availableActivities
-                )
-
-                // On/Off Controls
-                PopupControls(
-                    isEnabled = isPopupEnabled,
-                    onToggle = { enabled ->
-                        if (enabled) {
-                            // Check for overlay permission before enabling
-                            if (!Settings.canDrawOverlays(localContext)) {
-                                // Request permission
-                                val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
-                                localContext.startActivity(intent)
-                                Toast.makeText(
-                                    localContext,
-                                    "Please grant overlay permission to enable popups",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            } else {
-                                viewModel.togglePopupService(true, localContext)
-                            }
-                        } else {
-                            viewModel.togglePopupService(false, localContext)
-                        }
-                    },
-                    selectedActivity = selectedActivity
-                )
-
-                Spacer(modifier = Modifier.height(80.dp))
+                Spacer(Modifier.height(80.dp))
             }
 
             ProfileButton(navController)
-
-
         }
     }
 }
 
-
+// -- Reusable Composables
 @Composable private fun RobotHeader() {
-    Image(
-        painter = painterResource(id = R.drawable.robot),
-        contentDescription = "Robot mascot",
-        modifier = Modifier
-            .size(180.dp)
-            .padding(top = 24.dp, bottom = 24.dp)
-    )
-
-    Spacer(modifier = Modifier.height(32.dp))
-}
-
-@Composable private fun TopicSelector(
-    selectedTopic: String,
-    isExpanded: Boolean,
-    onToggleDropdown: () -> Unit,
-    onTopicSelected: (String) -> Unit,
-    availableTopics: List<String>
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Topic",
-            fontSize = 36.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
-            style = AppTheme.pixelTextStyle,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Box {
-            Button(
-                onClick = onToggleDropdown,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier
-                    .width(200.dp)
-                    .height(56.dp)
-            ) {
-                Text(
-                    text = selectedTopic,
-                    fontSize = 26.sp,
-                    color = AppTheme.darkBlueButtonColor,
-                    style = AppTheme.pixelTextStyleSmall,
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            DropdownMenu(
-                expanded = isExpanded,
-                onDismissRequest = onToggleDropdown,
-                modifier = Modifier
-                    .width(200.dp)
-                    .background(Color.White)
-            ) {
-                availableTopics.forEach { topic ->
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = topic,
-                                fontSize = 24.sp,
-                                fontFamily = AppTheme.pixelFontFamily
-                            )
-                        },
-                        onClick = { onTopicSelected(topic) }
-                    )
-                }
-            }
-        }
-    }
-
-    Spacer(modifier = Modifier.height(24.dp))
-}
-
-@Composable private fun ActivitySelector(
-    selectedActivity: String,
-    isExpanded: Boolean,
-    onToggleDropdown: () -> Unit,
-    onActivitySelected: (String) -> Unit,
-    availableActivities: List<String>
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Activity",
-            fontSize = 36.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
-            style = AppTheme.pixelTextStyle,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Box {
-            Button(
-                onClick = onToggleDropdown,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier
-                    .width(200.dp)
-                    .height(56.dp)
-            ) {
-                Text(
-                    text = selectedActivity,
-                    fontSize = 26.sp,
-                    color = AppTheme.darkBlueButtonColor,
-                    style = AppTheme.pixelTextStyleSmall,
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            DropdownMenu(
-                expanded = isExpanded,
-                onDismissRequest = onToggleDropdown,
-                modifier = Modifier
-                    .width(200.dp)
-                    .background(Color.White)
-            ) {
-                availableActivities.forEach { activity ->
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = activity,
-                                fontSize = 24.sp,
-                                fontFamily = AppTheme.pixelFontFamily
-                            )
-                        },
-                        onClick = { onActivitySelected(activity) }
-                    )
-                }
-            }
-        }
-    }
-
-    Spacer(modifier = Modifier.height(64.dp))
+    Image(painterResource(R.drawable.robot), null, Modifier.size(180.dp).padding(24.dp))
+    Spacer(Modifier.height(32.dp))
 }
 
 @Composable
-private fun PopupControls(
-    isEnabled: Boolean,
-    onToggle: (Boolean) -> Unit,
-    selectedActivity: String
+private fun DropdownSelector(
+    label: String,
+    selected: String,
+    expanded: Boolean,
+    toggle: () -> Unit,
+    options: List<String>,
+    onSelect: (String) -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "Off/On",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                fontFamily = AppTheme.pixelFontFamily,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Switch(
-                checked = isEnabled,
-                onCheckedChange = onToggle,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = Color(0xFF4B89DC),
-                    uncheckedThumbColor = Color.LightGray,
-                    uncheckedTrackColor = Color(0xFF444444)
-                ),
-                modifier = Modifier.size(width = 80.dp, height = 48.dp)
-            )
-
-            if (isEnabled) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "glhf",
-                    fontSize = 18.sp,
-                    color = Color.White,
-                    fontFamily = AppTheme.pixelFontFamily,
-                    textAlign = TextAlign.Center
-                )
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color.White, style = AppTheme.pixelTextStyle)
+        Spacer(Modifier.height(8.dp))
+        Box {
+            Button(onClick = toggle, shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.White)) {
+                Text(selected, fontSize = 26.sp, color = AppTheme.darkBlueButtonColor, style = AppTheme.pixelTextStyleSmall)
+            }
+            DropdownMenu(expanded, toggle, Modifier.width(200.dp).background(Color.White)) {
+                options.forEach { option ->
+                    DropdownMenuItem(text = { Text(option, fontSize = 24.sp, fontFamily = AppTheme.pixelFontFamily) }, onClick = { onSelect(option) })
+                }
             }
         }
     }
-
-    Spacer(modifier = Modifier.height(32.dp))
+    Spacer(Modifier.height(24.dp))
 }
 
-
-//Profile Button Text
-@Composable private fun profilebuttonDisplayText() {
-
-    Text(
-        text = "Profile",
-        fontSize = 22.sp,
-        color = AppTheme.darkBlueButtonColor,
-        style = AppTheme.pixelTextStyle.copy(
-            shadow = AppTheme.pixelTextStyle.shadow?.copy(
-                blurRadius = 1f,
-                offset = Offset(2f, 2f)
-            )
+@Composable
+private fun PopupToggle(enabled: Boolean, activity: String, onToggle: (Boolean) -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+        Text("Off/On", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White, fontFamily = AppTheme.pixelFontFamily)
+        Spacer(Modifier.height(12.dp))
+        Switch(
+            checked = enabled,
+            onCheckedChange = onToggle,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = Color(0xFF4B89DC),
+                uncheckedThumbColor = Color.LightGray,
+                uncheckedTrackColor = Color(0xFF444444)
+            ),
+            modifier = Modifier.size(80.dp, 48.dp)
         )
-    )
+        if (enabled) {
+            Spacer(Modifier.height(12.dp))
+            Text("glhf", fontSize = 18.sp, color = Color.White, fontFamily = AppTheme.pixelFontFamily)
+        }
+    }
 }
 
-
-//Displays box and Button Logic
-@Composable private fun profilebuttonLogic(navController: NavController, content: @Composable () -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxSize().padding(end = 24.dp, bottom = 32.dp),
-        contentAlignment = Alignment.BottomEnd
-    ) {
+@Composable
+private fun ProfileButton(navController: NavController) {
+    Box(Modifier.fillMaxSize().padding(end = 24.dp, bottom = 32.dp), contentAlignment = Alignment.BottomEnd) {
         Button(
             onClick = { navController.navigate("profile") },
             colors = ButtonDefaults.buttonColors(containerColor = Color.White),
             shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.height(50.dp).width(120.dp)
+            modifier = Modifier.size(width = 120.dp, height = 50.dp)
         ) {
-            content()
+            Text("Profile", fontSize = 22.sp, color = AppTheme.darkBlueButtonColor, style = AppTheme.pixelTextStyle.copy(
+                shadow = AppTheme.pixelTextStyle.shadow?.copy(blurRadius = 1f, offset = androidx.compose.ui.geometry.Offset(2f, 2f))
+            ))
         }
-
     }
-}
-
-@Composable private fun ProfileButton(navController: NavController) {
-    profilebuttonLogic(navController) { profilebuttonDisplayText() }
 }
