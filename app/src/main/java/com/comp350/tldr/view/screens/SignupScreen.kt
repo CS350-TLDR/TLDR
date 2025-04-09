@@ -175,6 +175,17 @@ fun SignupScreen(navController: NavController) {
             verticalArrangement = Arrangement.Bottom
 
         ) {
+            // Error message
+            errorMessage?.let {
+
+                Text(
+                    text = it,
+                    color = Color.Red,
+                    fontSize = 20.sp,
+                    fontFamily = AppTheme.pixelFontFamily,
+                )
+            }
+
             // Link to login screen
             TextButton(onClick = { navigationController.navigateToLogin() },
                 Modifier.offset(0.dp, (-180).dp)) {
@@ -186,17 +197,9 @@ fun SignupScreen(navController: NavController) {
                     textDecoration = TextDecoration.Underline,
                 )
             }
+
         }
-    }
-    // Error message
-    errorMessage?.let {
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = it,
-            color = Color.Red,
-            fontSize = 16.sp,
-            fontFamily = AppTheme.pixelFontFamily
-        )
+
     }
 }
 
