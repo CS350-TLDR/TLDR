@@ -617,14 +617,24 @@ class PopQuizService : Service() {
         contentLayout.addView(topBar)
 
         val video = VideoView(this).apply {
-            // Double the video size from 640x360 to 1280x720
-            layoutParams = LinearLayout.LayoutParams(1280, 720).apply { topMargin = 16 } // Double the margin too
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0
+            ).apply {
+                weight = 1f
+                topMargin = 16
+            }
         }
+
 
         videoViewComponent = video
 
         try {
-            video.setVideoURI(Uri.parse("android.resource://$packageName/${R.raw.pythonbasics}"))
+            val videoResIds = listOf(R.raw.pythonbasics, R.raw.oop_vs_functional, R.raw.oop_spongeb)
+            val randomVideoResId = videoResIds.random()
+            val videoUri = Uri.parse("android.resource://$packageName/$randomVideoResId")
+
+            video.setVideoURI(videoUri)
             video.setMediaController(MediaController(this).apply {
                 setAnchorView(video)
             })
@@ -660,6 +670,7 @@ class PopQuizService : Service() {
 
         return layout
     }
+
 
     private fun showVideoPopup() {
         removeAllOverlays()
