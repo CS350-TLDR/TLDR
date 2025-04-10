@@ -83,11 +83,45 @@ class PopQuizService : Service() {
 
         if (currentActivity == "Flashcards") {
             Log.d(TAG, "Starting flashcard mode")
-            removeAllOverlays() // Clear any existing overlays
-            displayAllFlashcards() // Show all 5 flashcards initially
-            startFlashcardRefreshTimer() // Start the 60-second refresh timer
+            removeAllOverlays()
+            displayAllFlashcards()
+            startFlashcardRefreshTimer()
         } else {
-            startScheduler()
+            // Start with a 10-second initial delay, then use the normal interval
+            timer?.cancel()
+            timer = Timer()
+
+            // First timer task with 10-second delay
+            timer?.schedule(object : TimerTask() {
+                override fun run() {
+                    Handler(Looper.getMainLooper()).post {
+                        try {
+                            when (currentActivity) {
+                                "Trivia" -> showRandomQuiz()
+                                "Video" -> showVideoPopup()
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Initial scheduler error", e)
+                        }
+                    }
+                }
+            }, 10000) // 10 seconds initial delay
+
+            // Then start the regular interval
+            timer?.scheduleAtFixedRate(object : TimerTask() {
+                override fun run() {
+                    Handler(Looper.getMainLooper()).post {
+                        try {
+                            when (currentActivity) {
+                                "Trivia" -> showRandomQuiz()
+                                "Video" -> showVideoPopup()
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Scheduler error", e)
+                        }
+                    }
+                }
+            }, 10000 + intervalMs, intervalMs) // Start after initial delay + interval
         }
     }
 
@@ -291,6 +325,7 @@ class PopQuizService : Service() {
         resizeHandle.setOnTouchListener(createResizeListener(layout))
     }
 
+
     @SuppressLint("ClickableViewAccessibility")
     private fun createResizeListener(view: View): View.OnTouchListener {
         return object : View.OnTouchListener {
@@ -298,14 +333,30 @@ class PopQuizService : Service() {
             private var initialHeight: Int = 0
             private var initialTouchX: Float = 0f
             private var initialTouchY: Float = 0f
+            private var aspectRatio: Float = 16f/9f  // Default 16:9 aspect ratio
 
             override fun onTouch(v: View, event: MotionEvent): Boolean {
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
                         // Get initial dimensions
                         val params = view.layoutParams as WindowManager.LayoutParams
-                        initialWidth = params.width
-                        initialHeight = params.height
+
+                        if (params.width == WindowManager.LayoutParams.WRAP_CONTENT) {
+                            view.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+                            initialWidth = view.measuredWidth
+                            initialHeight = view.measuredHeight
+
+                            params.width = initialWidth
+                            params.height = initialHeight
+                            windowManager.updateViewLayout(view, params)
+                        } else {
+                            initialWidth = params.width
+                            initialHeight = params.height
+                        }
+
+                        // Calculate aspect ratio from current dimensions
+                        aspectRatio = initialWidth.toFloat() / initialHeight.toFloat()
+
                         // Get initial touch position
                         initialTouchX = event.rawX
                         initialTouchY = event.rawY
@@ -313,16 +364,20 @@ class PopQuizService : Service() {
                     }
                     MotionEvent.ACTION_MOVE -> {
                         try {
-                            // Calculate new dimensions
                             val params = view.layoutParams as WindowManager.LayoutParams
 
-                            // Calculate width and height based on touches
-                            val newWidth = initialWidth + (event.rawX - initialTouchX).toInt()
-                            val newHeight = initialHeight + (event.rawY - initialTouchY).toInt()
+                            // Use the horizontal drag to determine size
+                            val deltaX = event.rawX - initialTouchX
 
-                            // Set minimum size
-                            params.width = Math.max(300, newWidth)
-                            params.height = Math.max(200, newHeight)
+                            // Calculate new width based on drag
+                            val newWidth = Math.max(400, initialWidth + deltaX.toInt())
+
+                            // Calculate height based on aspect ratio
+                            val newHeight = (newWidth / aspectRatio).toInt()
+
+                            // Apply the new dimensions
+                            params.width = newWidth
+                            params.height = Math.max(300, newHeight)
 
                             // Update view layout
                             windowManager.updateViewLayout(view, params)
@@ -676,13 +731,17 @@ class PopQuizService : Service() {
         removeAllOverlays()
         videoView = createVideoLayout()
 
-
+        val displayMetrics = resources.displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val screenHeight = displayMetrics.heightPixels
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            screenWidth / 2,  // Half width
+            screenHeight / 2, // Half height
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
+
+
         ).apply {
             gravity = Gravity.TOP or Gravity.START
             x = 100 // Double from 50

@@ -85,7 +85,7 @@ fun WelcomeScreen(navController: NavController) {
                 // Buttons section for login and signup
                 Column(
                     modifier = Modifier
-                        .padding(bottom = 200.dp), // space from bottom
+                        .padding(bottom = 100.dp), // space from bottom
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Log In Button
