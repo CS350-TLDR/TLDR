@@ -15,10 +15,9 @@ import com.comp350.tldr.R
 import com.comp350.tldr.classicstuff.Question
 import com.google.firebase.auth.FirebaseAuth
 import java.util.*
-import kotlin.random.Random
 
 class PopQuizService : Service() {
-    private val TAG = "PopQuizService"
+    private val serviceIdentifier = "PopQuizService"
 
     private lateinit var windowManager: WindowManager
     private var floatingView: View? = null
@@ -77,12 +76,19 @@ class PopQuizService : Service() {
     private fun handleStart(intent: Intent) {
         currentTopic = intent.getStringExtra("topic") ?: "Python"
         currentActivity = intent.getStringExtra("activity") ?: "Trivia"
-        intervalMs = intent.getLongExtra("interval", 60000)
+        intervalMs = intent.getLongExtra("interval", 60000) // I don't think this is used
 
-        Log.d(TAG, "Service started with activity: $currentActivity")
+        Log.d(serviceIdentifier, "Service started with activity: $currentActivity")
 
         if (currentActivity == "Flashcards") {
-            Log.d(TAG, "Starting flashcard mode")
+            Log.d(serviceIdentifier, "Starting flashcard mode")
+            removeAllOverlays() // Clear any existing overlays
+            displayAllFlashcards() // Show all 5 flashcards initially
+            startFlashcardRefreshTimer() // Start the 60-second refresh timer
+        }
+
+        if (currentActivity == "Flashcards") {
+            Log.d(serviceIdentifier, "Starting flashcard mode")
             removeAllOverlays() // Clear any existing overlays
             displayAllFlashcards() // Show all 5 flashcards initially
             startFlashcardRefreshTimer() // Start the 60-second refresh timer
@@ -104,7 +110,7 @@ class PopQuizService : Service() {
                             "Flashcards" -> { /* Handled separately */ }
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Scheduler error", e)
+                        Log.e(serviceIdentifier, "Scheduler error", e)
                     }
                 }
             }
@@ -120,7 +126,7 @@ class PopQuizService : Service() {
                     try {
                         refreshAllFlashcards()
                     } catch (e: Exception) {
-                        Log.e(TAG, "Flashcard refresh error", e)
+                        Log.e(serviceIdentifier, "Flashcard refresh error", e)
                     }
                 }
             }
@@ -150,7 +156,7 @@ class PopQuizService : Service() {
     }
 
     private fun refreshAllFlashcards() {
-        Log.d(TAG, "Refreshing all flashcards")
+        Log.d(serviceIdentifier, "Refreshing all flashcards")
         // Store positions of current cards
         val positions = flashcardViews.map {
             val params = it.layoutParams as WindowManager.LayoutParams
@@ -328,7 +334,7 @@ class PopQuizService : Service() {
                             windowManager.updateViewLayout(view, params)
                             return true
                         } catch (e: Exception) {
-                            Log.e(TAG, "Error in resize", e)
+                            Log.e(serviceIdentifier, "Error in resize", e)
                             return false
                         }
                     }
@@ -359,7 +365,7 @@ class PopQuizService : Service() {
                             initialTouchY = event.rawY
                             return true
                         } catch (e: Exception) {
-                            Log.e(TAG, "Error in touch DOWN event", e)
+                            Log.e(serviceIdentifier, "Error in touch DOWN event", e)
                             return false
                         }
                     }
@@ -373,7 +379,7 @@ class PopQuizService : Service() {
                             windowManager.updateViewLayout(view, params)
                             return true
                         } catch (e: Exception) {
-                            Log.e(TAG, "Error in touch MOVE event", e)
+                            Log.e(serviceIdentifier, "Error in touch MOVE event", e)
                             return false
                         }
                     }
@@ -399,7 +405,7 @@ class PopQuizService : Service() {
         try {
             windowManager.addView(view, params)
         } catch (e: Exception) {
-            Log.e(TAG, "Error adding flashcard window", e)
+            Log.e(serviceIdentifier, "Error adding flashcard window", e)
         }
     }
 
@@ -408,7 +414,7 @@ class PopQuizService : Service() {
             try {
                 windowManager.removeView(view)
             } catch (e: Exception) {
-                Log.e(TAG, "Error removing flashcard view", e)
+                Log.e(serviceIdentifier, "Error removing flashcard view", e)
             }
         }
         flashcardViews.clear()
@@ -601,8 +607,8 @@ class PopQuizService : Service() {
         val close = Button(this).apply {
             text = "X"
             textSize = 24f // Double from 12f
-            minWidth = 80 // Double from 40
-            minHeight = 80 // Double from 40
+            minWidth = 60 // Double from 40
+            minHeight = 60 // Double from 40
             setTextColor(AndroidColor.WHITE)
             setBackgroundColor(AndroidColor.parseColor(blueColor))
             layoutParams = LinearLayout.LayoutParams(
@@ -648,7 +654,7 @@ class PopQuizService : Service() {
 
             contentLayout.addView(video)
         } catch (e: Exception) {
-            Log.e(TAG, "Video error", e)
+            Log.e(serviceIdentifier, "Video error", e)
         }
 
         // Add content layout to the main frame
@@ -673,6 +679,7 @@ class PopQuizService : Service() {
 
 
     private fun showVideoPopup() {
+
         removeAllOverlays()
         videoView = createVideoLayout()
 
@@ -695,7 +702,7 @@ class PopQuizService : Service() {
             try {
                 videoViewComponent?.start()
             } catch (e: Exception) {
-                Log.e(TAG, "Error starting video", e)
+                Log.e(serviceIdentifier, "Error starting video", e)
             }
         }, 500)
     }
@@ -737,7 +744,7 @@ class PopQuizService : Service() {
             try {
                 windowManager.removeView(it)
             } catch (e: Exception) {
-                Log.e(TAG, "Error removing floating view", e)
+                Log.e(serviceIdentifier, "Error removing floating view", e)
             }
         }
         floatingView = null
@@ -748,7 +755,7 @@ class PopQuizService : Service() {
             try {
                 windowManager.removeView(it)
             } catch (e: Exception) {
-                Log.e(TAG, "Error removing result view", e)
+                Log.e(serviceIdentifier, "Error removing result view", e)
             }
         }
         resultsView = null
@@ -759,7 +766,7 @@ class PopQuizService : Service() {
             try {
                 windowManager.removeView(it)
             } catch (e: Exception) {
-                Log.e(TAG, "Error removing video view", e)
+                Log.e(serviceIdentifier, "Error removing video view", e)
             }
         }
         videoView = null
