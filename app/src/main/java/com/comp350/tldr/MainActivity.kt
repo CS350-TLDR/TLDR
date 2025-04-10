@@ -1,59 +1,63 @@
+// MainActivity.kt
 package com.comp350.tldr
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.comp350.tldr.ui.theme.COMP350TLDRTheme
+import androidx.navigation.navArgument
+import com.comp350.tldr.controller.navigation.NavRoutes
+import com.comp350.tldr.view.screens.LoginScreen
+import com.comp350.tldr.view.screens.MainMenuScreen
+import com.comp350.tldr.view.screens.ProfileScreen
+import com.comp350.tldr.view.screens.SignupScreen
+import com.comp350.tldr.view.screens.WelcomeScreen
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
-            COMP350TLDRTheme {
-                // Remember the NavController
-                val navController = rememberNavController()
-
-                // Use Scaffold without bottom navigation bar
-                Scaffold { paddingValues ->
-                    // Navigation host inside scaffold with padding
-                    NavHost(
-                        navController = navController,
-                        startDestination = "welcome_screen",
-                        modifier = Modifier.padding(paddingValues),
-                        enterTransition = { fadeIn(animationSpec = tween(700)) },
-                        exitTransition = { fadeOut(animationSpec = tween(700)) }
-                    ) {
-                        composable("welcome_screen") {
-                            WelcomeScreen(navController)
-                        }
-                        composable("login") {
-                            LoginScreen(navController)
-                        }
-                        composable("signup") {
-                            SignUpScreen(navController)
-                        }
-                        composable("main_menu") {
-                            // Pass the context to allow starting services
-                            MainMenuScreen(navController, this@MainActivity)
-                        }
-                        composable("profile") {
-                            ProfileScreen(navController)
-                        }
-                    }
-                }
-            }
+            AppNavigation()
         }
+    }
+}
+
+@Composable fun AppNavigation() {
+    val navController = rememberNavController()
+
+    NavHost(
+        navController = navController,
+        startDestination = NavRoutes.WELCOME
+    ) {
+        // Welcome Screen
+        composable(NavRoutes.WELCOME) {
+            WelcomeScreen(navController)
+        }
+
+        // Login Screen
+        composable(NavRoutes.LOGIN) {
+            LoginScreen(navController)
+        }
+
+        // Signup Screen
+        composable(NavRoutes.SIGNUP) {
+            SignupScreen(navController)
+        }
+
+        // Main Menu Screen
+        composable(NavRoutes.MAIN_MENU) {
+            MainMenuScreen(navController)
+        }
+
+        // Profile Screen
+        composable(NavRoutes.PROFILE) {
+            ProfileScreen(navController)
+        }
+
     }
 }
