@@ -35,6 +35,10 @@
             android:name=".model.services.PopQuizService"
             android:enabled="true"
             android:exported="false" />
+
+        <service android:name=".model.services.VocabMatchService" />
+
+
     </application>
 
 </manifest>

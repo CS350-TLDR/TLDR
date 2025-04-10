@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -21,7 +22,6 @@ import com.comp350.tldr.view.theme.AppTheme
 
 @Composable
 fun LoginScreen(navController: NavController) {
-    val context = LocalContext.current
     val auth = FirebaseAuth.getInstance()
     val navigationController = NavigationController(navController)
 
@@ -140,6 +140,11 @@ private fun LoginButton(
 ) {
     Button(
         onClick = {
+            if (email.isBlank() || password.isBlank()) {
+                onErrorMessageChange("All fields are required")
+                return@Button
+            }
+
             onLoadingChange(true)
             onErrorMessageChange(null)
 
@@ -147,7 +152,6 @@ private fun LoginButton(
                 .addOnCompleteListener { task ->
                     onLoadingChange(false)
                     if (task.isSuccessful) {
-                        // Navigate to main menu on success
                         navigationController.navigateToMainMenu()
                     } else {
                         onErrorMessageChange(task.exception?.message)
@@ -180,7 +184,7 @@ private fun ErrorMessageDisplay(errorMessage: String?) {
         Text(
             text = it,
             color = Color.Red,
-            fontSize = 16.sp,
+            fontSize = 20.sp,
             fontFamily = AppTheme.pixelFontFamily
         )
     }
@@ -197,7 +201,8 @@ private fun SignupNavigationButton(navigationController: NavigationController) {
             "Don't have an account? Sign up",
             color = Color.White,
             fontSize = 18.sp,
-            fontFamily = AppTheme.pixelFontFamily
+            fontFamily = AppTheme.pixelFontFamily,
+            textDecoration = TextDecoration.Underline
         )
     }
 }
