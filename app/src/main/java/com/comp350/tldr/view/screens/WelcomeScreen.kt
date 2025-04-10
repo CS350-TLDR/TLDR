@@ -95,7 +95,7 @@ fun WelcomeScreen(navController: NavController) {
                                 // Trigger fade-out before navigating
                                 isVisible = false
                                 delay(500)
-                                navigationController.navigateToMainMenu()//navigateToLogin()
+                                navigationController.navigateToLogin()
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = AppTheme.blueButtonColor),
