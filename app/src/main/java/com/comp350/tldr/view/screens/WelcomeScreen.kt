@@ -34,7 +34,7 @@ fun WelcomeScreen(navController: NavController) {
     val coroutineScope = rememberCoroutineScope()
     val navigationController = NavigationController(navController)
 
-    PixelBackground {
+    PixelBackground { // Invokes PixelBackground.kt from view/components
         // Animated visibility for fade-in/out effects on the welcome content
         AnimatedVisibility(
             visible = isVisible,
@@ -85,7 +85,7 @@ fun WelcomeScreen(navController: NavController) {
                 // Buttons section for login and signup
                 Column(
                     modifier = Modifier
-                        .padding(bottom = 200.dp), // space from bottom
+                        .padding(bottom = 100.dp), // space from bottom
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Log In Button
