@@ -11,24 +11,37 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.google.firebase.auth.FirebaseAuth
 import com.comp350.tldr.controller.navigation.NavigationController
+import com.comp350.tldr.controller.viewmodels.LoginViewModel
 import com.comp350.tldr.view.components.PixelBackground
 import com.comp350.tldr.view.theme.AppTheme
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(navController: NavController) {
-    val auth = FirebaseAuth.getInstance()
+    val context = LocalContext.current
+    val loginViewModel: LoginViewModel = viewModel()
     val navigationController = NavigationController(navController)
 
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
+    val email by loginViewModel.email.collectAsState()
+    val password by loginViewModel.password.collectAsState()
+    val errorMessage by loginViewModel.errorMessage.collectAsState()
+    val isLoading by loginViewModel.isLoading.collectAsState()
+    val savedEmails by loginViewModel.savedEmails.collectAsState()
+
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        loginViewModel.loadSavedEmails(context)
+        loginViewModel.updateEmail("") // optional: clear old email
+        loginViewModel.updatePassword("")
+    }
+
 
     PixelBackground {
         Column(
@@ -44,26 +57,30 @@ fun LoginScreen(navController: NavController) {
 
             EmailInputField(
                 email = email,
-                onEmailChange = { email = it }
+                onEmailChange = loginViewModel::updateEmail,
+                savedEmails = savedEmails
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             PasswordInputField(
                 password = password,
-                onPasswordChange = { password = it }
+                onPasswordChange = loginViewModel::updatePassword
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
             LoginButton(
                 isLoading = isLoading,
-                email = email,
-                password = password,
-                auth = auth,
-                navigationController = navigationController,
-                onLoadingChange = { isLoading = it },
-                onErrorMessageChange = { errorMessage = it }
+                onClick = {
+                    coroutineScope.launch {
+                        loginViewModel.login(context) { success ->
+                            if (success) {
+                                navigationController.navigateToMainMenu()
+                            }
+                        }
+                    }
+                }
             )
 
             ErrorMessageDisplay(errorMessage)
@@ -87,24 +104,61 @@ private fun LoginScreenTitle() {
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EmailInputField(
     email: String,
-    onEmailChange: (String) -> Unit
+    onEmailChange: (String) -> Unit,
+    savedEmails: List<String>
 ) {
-    TextField(
-        value = email,
-        onValueChange = onEmailChange,
-        label = { Text("Email", color = Color.Gray) },
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White,
-            focusedTextColor = Color.Black,
-            unfocusedTextColor = Color.Black
-        ),
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth()
-    )
+    var expanded by rememberSaveable { mutableStateOf(false) }
+
+    val filteredEmails = remember(email, savedEmails) {
+        savedEmails.filter {
+            it.contains(email, ignoreCase = true) && it != email
+        }
+    }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded && filteredEmails.isNotEmpty(),
+        onExpandedChange = { expanded = !expanded }
+    ) {
+        OutlinedTextField(
+            value = email,
+            onValueChange = {
+                onEmailChange(it)
+                expanded = true
+            },
+            label = { Text("Email", color = Color.Gray) },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth(),
+            singleLine = true,
+            shape = RoundedCornerShape(8.dp),
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                containerColor = Color.White,
+                focusedTextColor = Color.Black,
+                unfocusedTextColor = Color.Black,
+                focusedLabelColor = Color.Gray,
+                unfocusedLabelColor = Color.Gray
+            )
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded && filteredEmails.isNotEmpty(),
+            onDismissRequest = { expanded = false }
+        ) {
+            filteredEmails.forEach { suggestion ->
+                DropdownMenuItem(
+                    text = { Text(suggestion) },
+                    onClick = {
+                        onEmailChange(suggestion)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -131,33 +185,10 @@ private fun PasswordInputField(
 @Composable
 private fun LoginButton(
     isLoading: Boolean,
-    email: String,
-    password: String,
-    auth: FirebaseAuth,
-    navigationController: NavigationController,
-    onLoadingChange: (Boolean) -> Unit,
-    onErrorMessageChange: (String?) -> Unit
+    onClick: () -> Unit
 ) {
     Button(
-        onClick = {
-            if (email.isBlank() || password.isBlank()) {
-                onErrorMessageChange("All fields are required")
-                return@Button
-            }
-
-            onLoadingChange(true)
-            onErrorMessageChange(null)
-
-            auth.signInWithEmailAndPassword(email, password)
-                .addOnCompleteListener { task ->
-                    onLoadingChange(false)
-                    if (task.isSuccessful) {
-                        navigationController.navigateToMainMenu()
-                    } else {
-                        onErrorMessageChange(task.exception?.message)
-                    }
-                }
-        },
+        onClick = onClick,
         enabled = !isLoading,
         colors = ButtonDefaults.buttonColors(containerColor = AppTheme.blueButtonColor),
         modifier = Modifier
@@ -184,7 +215,7 @@ private fun ErrorMessageDisplay(errorMessage: String?) {
         Text(
             text = it,
             color = Color.Red,
-            fontSize = 20.sp,
+            fontSize = 16.sp,
             fontFamily = AppTheme.pixelFontFamily
         )
     }
@@ -201,8 +232,7 @@ private fun SignupNavigationButton(navigationController: NavigationController) {
             "Don't have an account? Sign up",
             color = Color.White,
             fontSize = 18.sp,
-            fontFamily = AppTheme.pixelFontFamily,
-            textDecoration = TextDecoration.Underline
+            fontFamily = AppTheme.pixelFontFamily
         )
     }
 }
