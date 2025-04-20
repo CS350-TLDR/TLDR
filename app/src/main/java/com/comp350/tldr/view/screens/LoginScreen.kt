@@ -21,6 +21,8 @@ import com.comp350.tldr.controller.viewmodels.LoginViewModel
 import com.comp350.tldr.view.components.PixelBackground
 import com.comp350.tldr.view.theme.AppTheme
 import kotlinx.coroutines.launch
+import com.google.firebase.auth.FirebaseAuth
+
 
 @Composable
 fun LoginScreen(navController: NavController) {
@@ -33,6 +35,11 @@ fun LoginScreen(navController: NavController) {
     val errorMessage by loginViewModel.errorMessage.collectAsState()
     val isLoading by loginViewModel.isLoading.collectAsState()
     val savedEmails by loginViewModel.savedEmails.collectAsState()
+
+    // for forgot password
+    var showResetDialog by remember { mutableStateOf(false) }
+    var snackbarMessage by remember { mutableStateOf<String?>(null) }
+
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -88,6 +95,48 @@ fun LoginScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(24.dp))
 
             SignupNavigationButton(navigationController)
+
+            TextButton(onClick = { showResetDialog = true }) {
+                TextButton(onClick = { showResetDialog = true }) {
+                    Text(
+                        "Forgot Password?",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontFamily = AppTheme.pixelFontFamily
+                    )
+                }
+
+            }
+
+            ForgotPasswordDialog(
+                showDialog = showResetDialog,
+                onDismiss = { showResetDialog = false },
+                onSendReset = { emailToReset ->
+                    FirebaseAuth.getInstance().sendPasswordResetEmail(emailToReset)
+                        .addOnCompleteListener { task ->
+                            snackbarMessage = if (task.isSuccessful) {
+                                "Password reset email sent"
+                            } else {
+                                task.exception?.message ?: "Failed to send reset email"
+                            }
+                        }
+                }
+            )
+
+            snackbarMessage?.let { message ->
+                Snackbar(
+                    action = {
+                        TextButton(onClick = { snackbarMessage = null }) {
+                            Text("Dismiss", color = Color.Yellow)
+                        }
+                    },
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(message)
+                }
+            }
+
+
         }
     }
 }
@@ -233,6 +282,47 @@ private fun SignupNavigationButton(navigationController: NavigationController) {
             color = Color.White,
             fontSize = 18.sp,
             fontFamily = AppTheme.pixelFontFamily
+        )
+    }
+}
+
+@Composable
+fun ForgotPasswordDialog(
+    showDialog: Boolean,
+    onDismiss: () -> Unit,
+    onSendReset: (String) -> Unit
+) {
+    var email by remember { mutableStateOf("") }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("Reset Password") },
+            text = {
+                Column {
+                    Text("Enter your email to receive a password reset link.")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        placeholder = { Text("Email") },
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onSendReset(email)
+                    onDismiss()
+                }) {
+                    Text("Send")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 }
