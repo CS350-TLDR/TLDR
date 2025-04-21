@@ -33,42 +33,83 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import com.comp350.tldr.controller.viewmodels.MainMenuViewModel
 
-
-
-
-// -- MainScreen
 @Composable
 fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewModel()) {
     val ctx = LocalContext.current
     val topic by vm.topic.collectAsState()
     val activity by vm.activity.collectAsState()
+    val interval by vm.interval.collectAsState()
     val enabled by vm.popupEnabled.collectAsState()
+    val timeRemaining by vm.timeRemaining.collectAsState()
 
     var topicOpen by remember { mutableStateOf(false) }
     var activityOpen by remember { mutableStateOf(false) }
+    var intervalOpen by remember { mutableStateOf(false) }
 
     PixelBackground {
         Box(Modifier.fillMaxSize()) {
             Column(
                 Modifier
-                    .padding(16.dp)
+                    .padding(top = 8.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                RobotHeader()
+                // Robot header with smaller size and padding
+                Image(
+                    painterResource(R.drawable.robot),
+                    null,
+                    Modifier.size(160.dp).padding(16.dp)
+                )
+                Spacer(Modifier.height(16.dp))
 
-                DropdownSelector("Topic", topic, topicOpen, { topicOpen = !topicOpen }, vm.topics) {
-                    vm.setTopic(it)
-                    topicOpen = false
-                    if (enabled) vm.togglePopup(true, ctx)
-                }
+                // Topic dropdown with disabled state
+                DropdownSelector(
+                    label = "Topic",
+                    selected = topic,
+                    expanded = topicOpen,
+                    onExpandChange = { if (!enabled) topicOpen = !topicOpen },
+                    options = vm.topics,
+                    enabled = !enabled,
+                    onSelect = {
+                        vm.setTopic(it)
+                        topicOpen = false
+                    }
+                )
 
-                DropdownSelector("Activity", activity, activityOpen, { activityOpen = !activityOpen }, vm.activities) {
-                    vm.setActivity(it)
-                    activityOpen = false
-                    if (enabled) vm.togglePopup(true, ctx)
-                }
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Activity dropdown with disabled state
+                DropdownSelector(
+                    label = "Activity",
+                    selected = activity,
+                    expanded = activityOpen,
+                    onExpandChange = { if (!enabled) activityOpen = !activityOpen },
+                    options = vm.activities,
+                    enabled = !enabled,
+                    onSelect = {
+                        vm.setActivity(it)
+                        activityOpen = false
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Interval dropdown with disabled state
+                DropdownSelector(
+                    label = "Interval",
+                    selected = interval,
+                    expanded = intervalOpen,
+                    onExpandChange = { if (!enabled) intervalOpen = !intervalOpen },
+                    options = vm.intervals,
+                    enabled = !enabled,
+                    onSelect = {
+                        vm.setInterval(it, ctx)
+                        intervalOpen = false
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
 
                 PopupToggle(enabled, activity) { toggled ->
                     if (toggled && !Settings.canDrawOverlays(ctx)) {
@@ -79,7 +120,18 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                     }
                 }
 
-                Spacer(Modifier.height(80.dp))
+                Spacer(Modifier.height(60.dp))
+            }
+
+            // Countdown timer in top right
+            if (enabled) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 16.dp, end = 16.dp)
+                ) {
+                    CountdownTimer(timeRemaining)
+                }
             }
 
             ProfileButton(navController)
@@ -87,43 +139,109 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
     }
 }
 
-// -- Reusable Composables
-@Composable private fun RobotHeader() {
-    Image(painterResource(R.drawable.robot), null, Modifier.size(180.dp).padding(24.dp))
-    Spacer(Modifier.height(32.dp))
-}
-
 @Composable
 private fun DropdownSelector(
     label: String,
     selected: String,
     expanded: Boolean,
-    toggle: () -> Unit,
+    onExpandChange: () -> Unit,
     options: List<String>,
+    enabled: Boolean,
     onSelect: (String) -> Unit
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color.White, style = AppTheme.pixelTextStyle)
-        Spacer(Modifier.height(8.dp))
+        Text(
+            label,
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            style = AppTheme.pixelTextStyle
+        )
+        Spacer(Modifier.height(4.dp))
         Box {
-            Button(onClick = toggle, shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.White)) {
-                Text(selected, fontSize = 26.sp, color = AppTheme.darkBlueButtonColor, style = AppTheme.pixelTextStyleSmall)
+            // Button with disabled state styling
+            Button(
+                onClick = onExpandChange,
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    disabledContainerColor = Color.Gray
+                ),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                enabled = enabled
+            ) {
+                Text(
+                    selected,
+                    fontSize = 24.sp,
+                    color = if (enabled) AppTheme.darkBlueButtonColor else Color.DarkGray,
+                    style = AppTheme.pixelTextStyleSmall
+                )
             }
-            DropdownMenu(expanded, toggle, Modifier.width(200.dp).background(Color.White)) {
-                options.forEach { option ->
-                    DropdownMenuItem(text = { Text(option, fontSize = 24.sp, fontFamily = AppTheme.pixelFontFamily) }, onClick = { onSelect(option) })
+
+            // Only show dropdown if enabled
+            if (enabled && expanded) {
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = onExpandChange,
+                    modifier = Modifier.width(200.dp).background(Color.White)
+                ) {
+                    options.forEach { option ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    option,
+                                    fontSize = 22.sp,
+                                    fontFamily = AppTheme.pixelFontFamily
+                                )
+                            },
+                            onClick = { onSelect(option) }
+                        )
+                    }
                 }
             }
         }
     }
-    Spacer(Modifier.height(24.dp))
+    Spacer(Modifier.height(16.dp))
 }
+
+
+// New composable for the countdown timer
+@Composable
+private fun CountdownTimer(timeRemaining: Long) {
+    val minutes = timeRemaining / 60000
+    val seconds = (timeRemaining % 60000) / 1000
+
+    Text(
+        text = String.format("%02d:%02d", minutes, seconds),
+        color = Color.White,
+        fontSize = 24.sp,
+        fontFamily = AppTheme.pixelFontFamily,
+        modifier = Modifier
+            .background(
+                color = AppTheme.darkBlueButtonColor,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    )
+}
+
 
 @Composable
 private fun PopupToggle(enabled: Boolean, activity: String, onToggle: (Boolean) -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(24.dp)) {
-        Text("Off/On", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White, fontFamily = AppTheme.pixelFontFamily)
-        Spacer(Modifier.height(12.dp))
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 12.dp) // Reduced vertical padding
+    ) {
+        Text(
+            "Off/On",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            fontFamily = AppTheme.pixelFontFamily
+        )
+        Spacer(Modifier.height(8.dp)) // Reduced spacing
         Switch(
             checked = enabled,
             onCheckedChange = onToggle,
@@ -136,7 +254,7 @@ private fun PopupToggle(enabled: Boolean, activity: String, onToggle: (Boolean) 
             modifier = Modifier.size(80.dp, 48.dp)
         )
         if (enabled) {
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp)) // Reduced spacing
             Text("glhf", fontSize = 18.sp, color = Color.White, fontFamily = AppTheme.pixelFontFamily)
         }
     }
@@ -144,16 +262,29 @@ private fun PopupToggle(enabled: Boolean, activity: String, onToggle: (Boolean) 
 
 @Composable
 private fun ProfileButton(navController: NavController) {
-    Box(Modifier.fillMaxSize().padding(end = 24.dp, bottom = 32.dp), contentAlignment = Alignment.BottomEnd) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .padding(end = 24.dp, bottom = 24.dp), // Reduced bottom padding
+        contentAlignment = Alignment.BottomEnd
+    ) {
         Button(
             onClick = { navController.navigate("profile") },
             colors = ButtonDefaults.buttonColors(containerColor = Color.White),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.size(width = 120.dp, height = 50.dp)
         ) {
-            Text("Profile", fontSize = 22.sp, color = AppTheme.darkBlueButtonColor, style = AppTheme.pixelTextStyle.copy(
-                shadow = AppTheme.pixelTextStyle.shadow?.copy(blurRadius = 1f, offset = androidx.compose.ui.geometry.Offset(2f, 2f))
-            ))
+            Text(
+                "Profile",
+                fontSize = 22.sp,
+                color = AppTheme.darkBlueButtonColor,
+                style = AppTheme.pixelTextStyle.copy(
+                    shadow = AppTheme.pixelTextStyle.shadow?.copy(
+                        blurRadius = 1f,
+                        offset = androidx.compose.ui.geometry.Offset(2f, 2f)
+                    )
+                )
+            )
         }
     }
 }

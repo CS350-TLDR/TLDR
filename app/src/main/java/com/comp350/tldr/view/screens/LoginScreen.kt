@@ -170,13 +170,21 @@ private fun EmailInputField(
 
     ExposedDropdownMenuBox(
         expanded = expanded && filteredEmails.isNotEmpty(),
-        onExpandedChange = { expanded = !expanded }
+        onExpandedChange = {
+            // Only toggle expanded state when clicking the dropdown icon
+            if (filteredEmails.isNotEmpty()) {
+                expanded = !expanded
+            }
+        }
     ) {
-        OutlinedTextField(
+        TextField(
             value = email,
             onValueChange = {
                 onEmailChange(it)
-                expanded = true
+                // Keep menu open if we have suggestions
+                if (filteredEmails.isNotEmpty()) {
+                    expanded = true
+                }
             },
             label = { Text("Email", color = Color.Gray) },
             modifier = Modifier
@@ -184,32 +192,33 @@ private fun EmailInputField(
                 .fillMaxWidth(),
             singleLine = true,
             shape = RoundedCornerShape(8.dp),
-            colors = TextFieldDefaults.outlinedTextFieldColors(
-                containerColor = Color.White,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
                 focusedTextColor = Color.Black,
-                unfocusedTextColor = Color.Black,
-                focusedLabelColor = Color.Gray,
-                unfocusedLabelColor = Color.Gray
+                unfocusedTextColor = Color.Black
             )
         )
 
-        ExposedDropdownMenu(
-            expanded = expanded && filteredEmails.isNotEmpty(),
-            onDismissRequest = { expanded = false }
-        ) {
-            filteredEmails.forEach { suggestion ->
-                DropdownMenuItem(
-                    text = { Text(suggestion) },
-                    onClick = {
-                        onEmailChange(suggestion)
-                        expanded = false
-                    }
-                )
+        // Only show dropdown when we have suggestions
+        if (filteredEmails.isNotEmpty()) {
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                filteredEmails.forEach { suggestion ->
+                    DropdownMenuItem(
+                        text = { Text(suggestion) },
+                        onClick = {
+                            onEmailChange(suggestion)
+                            expanded = false
+                        }
+                    )
+                }
             }
         }
     }
 }
-
 @Composable
 private fun PasswordInputField(
     password: String,

@@ -654,11 +654,12 @@ class QuizController(private val context: Context) {
         return selectedAnswerIndex == question.correctAnswerIndex
     }
 
-    fun startPopupService(topic: String, activity: String, testMode: Boolean = false) {
+
+    fun startPopupService(topic: String, activity: String, intervalMs: Long, testMode: Boolean = false) {
         val intent = Intent(context, PopQuizService::class.java).apply {
             putExtra("topic", topic)
             putExtra("activity", activity)
-            putExtra("interval", 60000L) // 60 seconds
+            putExtra("interval", intervalMs)
             putExtra("test_mode", testMode)
             action = "START_SERVICE"
         }
