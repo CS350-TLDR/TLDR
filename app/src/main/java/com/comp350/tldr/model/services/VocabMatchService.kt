@@ -85,7 +85,7 @@ class VocabMatchService : Service() {
         // Get interval from intent (with default value)
         intervalMs = intent.getLongExtra("interval", 60000L)
 
-        Log.d(serviceIdentifier, "VocabMatch service started with interval: $intervalMs ms")
+
 
         // Cancel any existing timers
         timer?.cancel()
@@ -97,12 +97,7 @@ class VocabMatchService : Service() {
         // Schedule regular refresh based on the interval
         startRefreshTimer()
 
-        // Notify user
-        Toast.makeText(
-            applicationContext,
-            "VocabMatch service started (every ${formatIntervalForDisplay(intervalMs)})",
-            Toast.LENGTH_SHORT
-        ).show()
+
     }
 
     // Format interval for display

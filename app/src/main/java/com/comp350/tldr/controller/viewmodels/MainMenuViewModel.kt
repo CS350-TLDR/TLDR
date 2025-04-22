@@ -5,10 +5,13 @@ import android.os.CountDownTimer
 import android.os.Handler
 import androidx.lifecycle.ViewModel
 import com.comp350.tldr.controllers.QuizController
+import com.comp350.tldr.controllers.DailyStreakManager
+import com.comp350.tldr.controllers.UserController
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import android.content.Intent
 import android.widget.Toast
+import android.util.Log
 
 class MainMenuViewModel : ViewModel() {
     private val _topic = MutableStateFlow("Python")
@@ -17,13 +20,14 @@ class MainMenuViewModel : ViewModel() {
     private val _activity = MutableStateFlow("Trivia")
     val activity: StateFlow<String> = _activity
 
-    // Interval state
     private val _interval = MutableStateFlow("1m")
     val interval: StateFlow<String> = _interval
 
-    // Timer countdown state
-    private val _timeRemaining = MutableStateFlow(60000L) // Default 1 minute
+    private val _timeRemaining = MutableStateFlow(60000L)
     val timeRemaining: StateFlow<Long> = _timeRemaining
+
+    private val _streak = MutableStateFlow(0)
+    val streak: StateFlow<Int> = _streak
 
     private var countdownTimer: CountDownTimer? = null
 
@@ -34,21 +38,58 @@ class MainMenuViewModel : ViewModel() {
     val activities = listOf("Trivia", "Video", "Flashcards", "VocabMatch")
     val intervals = listOf("1m", "5m", "10m", "30m", "1h", "2h")
 
+    private var streakManager: DailyStreakManager? = null
+
+    fun initStreakManager(context: Context) {
+        streakManager = DailyStreakManager(context)
+        _streak.value = streakManager?.getCurrentStreak() ?: 0
+    }
+
+    // Modified to accept context parameter
+    fun checkDailyStreak(context: Context, onReward: (Int) -> Unit) {
+        val manager = streakManager ?: return
+        manager.checkAndUpdateStreak { newStreak, reward ->
+            _streak.value = newStreak
+
+            if (reward > 0) {
+                // Award the gears using the passed context
+                awardStreakReward(context, reward)
+                onReward(reward)
+            }
+        }
+    }
+
+    // Added this method inside the class
+    private fun awardStreakReward(context: Context, reward: Int) {
+        // Get the user controller to update the gears
+        val userController = UserController(context)
+        val currentUser = userController.getCurrentUser()
+        if (currentUser != null) {
+            val updatedGears = currentUser.gears + reward
+            userController.updateGears(updatedGears)
+            // Log the update
+            Log.d("MainMenuViewModel", "Updated gears: $updatedGears (+$reward)")
+        }
+    }
+
     fun setTopic(value: String) { _topic.value = value }
     fun setActivity(value: String) { _activity.value = value }
 
     fun setInterval(value: String, context: Context) {
         _interval.value = value
-        // Reset timer when interval changes
         if (_popupEnabled.value) {
             startCountdownTimer(getIntervalMillis(value))
-            // Restart service with new interval
             togglePopup(false, context)
             togglePopup(true, context)
         }
     }
 
     fun togglePopup(enabled: Boolean, context: Context) {
+        // Initialize streak manager if needed
+        if (streakManager == null) {
+            initStreakManager(context)
+        }
+
         val intervalMs = getIntervalMillis(_interval.value)
 
         // Stop any existing services first regardless of enabled state
@@ -63,7 +104,6 @@ class MainMenuViewModel : ViewModel() {
             }
         }
 
-        // Small delay to ensure service is fully stopped
         Handler().postDelayed({
             if (enabled) {
                 when (_activity.value) {
@@ -73,24 +113,22 @@ class MainMenuViewModel : ViewModel() {
                             putExtra("interval", intervalMs)
                         }
                         context.startService(intent)
-                        Toast.makeText(context, "VocabMatch service started with interval: ${formatIntervalForDisplay(intervalMs)}", Toast.LENGTH_SHORT).show()
+
                     }
                     else -> {
                         val quiz = QuizController(context)
                         quiz.startPopupService(_topic.value, _activity.value, intervalMs)
-                        Toast.makeText(context, "${_activity.value} service started with interval: ${formatIntervalForDisplay(intervalMs)}", Toast.LENGTH_SHORT).show()
+
                     }
                 }
 
-                // Start the countdown timer
                 startCountdownTimer(intervalMs)
             }
 
             _popupEnabled.value = enabled
-        }, 100) // Small delay of 100ms
+        }, 100)
     }
 
-    // Convert interval string to milliseconds
     private fun getIntervalMillis(interval: String): Long {
         return when (interval) {
             "1m" -> 60000L
@@ -99,11 +137,10 @@ class MainMenuViewModel : ViewModel() {
             "30m" -> 1800000L
             "1h" -> 3600000L
             "2h" -> 7200000L
-            else -> 60000L // Default to 1 minute
+            else -> 60000L
         }
     }
 
-    // Format interval for display
     private fun formatIntervalForDisplay(intervalMs: Long): String {
         return when (intervalMs) {
             60000L -> "1 minute"
@@ -117,8 +154,7 @@ class MainMenuViewModel : ViewModel() {
     }
 
     private fun startCountdownTimer(intervalMs: Long) {
-        stopCountdownTimer() // Cancel any existing timer
-
+        stopCountdownTimer()
         _timeRemaining.value = intervalMs
 
         countdownTimer = object : CountDownTimer(intervalMs, 1000) {
@@ -127,8 +163,6 @@ class MainMenuViewModel : ViewModel() {
             }
 
             override fun onFinish() {
-                // Just reset the timer after it finishes
-                // We don't need to trigger the popup here as the service handles that
                 startCountdownTimer(intervalMs)
             }
         }.start()
