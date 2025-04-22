@@ -6,11 +6,14 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import com.comp350.tldr.controller.navigation.NavigationController
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,17 +24,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.comp350.tldr.R
-import com.comp350.tldr.controller.navigation.NavigationController
-import com.comp350.tldr.controllers.QuizController
+import com.comp350.tldr.controller.viewmodels.MainMenuViewModel
 import com.comp350.tldr.view.components.PixelBackground
 import com.comp350.tldr.view.theme.AppTheme
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import com.comp350.tldr.controller.viewmodels.MainMenuViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewModel()) {
@@ -41,10 +41,25 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
     val interval by vm.interval.collectAsState()
     val enabled by vm.popupEnabled.collectAsState()
     val timeRemaining by vm.timeRemaining.collectAsState()
+    val streak by vm.streak.collectAsState()
+
+    var toggleCooldown by remember { mutableStateOf(false) }
+    var showStreakDialog by remember { mutableStateOf(false) }
+    var streakReward by remember { mutableStateOf(0) }
 
     var topicOpen by remember { mutableStateOf(false) }
     var activityOpen by remember { mutableStateOf(false) }
     var intervalOpen by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        vm.initStreakManager(ctx)
+        vm.checkDailyStreak(ctx) { reward ->
+            if (reward > 0) {
+                streakReward = reward
+                showStreakDialog = true
+            }
+        }
+    }
 
     PixelBackground {
         Box(Modifier.fillMaxSize()) {
@@ -55,7 +70,6 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Robot header with smaller size and padding
                 Image(
                     painterResource(R.drawable.robot),
                     null,
@@ -63,7 +77,6 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                 )
                 Spacer(Modifier.height(16.dp))
 
-                // Topic dropdown with disabled state
                 DropdownSelector(
                     label = "Topic",
                     selected = topic,
@@ -79,7 +92,6 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Activity dropdown with disabled state
                 DropdownSelector(
                     label = "Activity",
                     selected = activity,
@@ -95,7 +107,6 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Interval dropdown with disabled state
                 DropdownSelector(
                     label = "Interval",
                     selected = interval,
@@ -111,19 +122,38 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                PopupToggle(enabled, activity) { toggled ->
-                    if (toggled && !Settings.canDrawOverlays(ctx)) {
-                        ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION))
-                        Toast.makeText(ctx, "Grant overlay permission for popups", Toast.LENGTH_LONG).show()
-                    } else {
-                        vm.togglePopup(toggled, ctx)
+                PopupToggle(
+                    enabled = enabled,
+                    activity = activity,
+                    cooldownActive = toggleCooldown,
+                    onToggle = { toggled ->
+                        if (toggled && !Settings.canDrawOverlays(ctx)) {
+                            ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION))
+                            Toast.makeText(ctx, "Grant overlay permission for popups", Toast.LENGTH_LONG).show()
+                        } else {
+                            if (toggled) {
+                                toggleCooldown = true
+                                kotlinx.coroutines.MainScope().launch {
+                                    delay(5000)
+                                    toggleCooldown = false
+                                }
+                            }
+                            vm.togglePopup(toggled, ctx)
+                        }
                     }
-                }
+                )
 
                 Spacer(Modifier.height(60.dp))
             }
 
-            // Countdown timer in top right
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = 16.dp, start = 16.dp)
+            ) {
+                DailyStreakCounter(streak)
+            }
+
             if (enabled) {
                 Box(
                     modifier = Modifier
@@ -135,6 +165,188 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
             }
 
             ProfileButton(navController)
+            LogoutButton(navController)
+
+            if (showStreakDialog) {
+                StreakRewardDialog(
+                    streak = streak,
+                    reward = streakReward,
+                    onDismiss = { showStreakDialog = false }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DailyStreakCounter(streak: Int) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(56.dp)
+            .background(Color.White, shape = CircleShape)
+            .clickable {
+                showDialog = true
+            }
+    ) {
+        Text(
+            text = "$streak",
+            color = Color.Black,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = AppTheme.pixelFontFamily
+        )
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = {},
+            text = {
+                Text(
+                    "Daily Streak: Day $streak",
+                    fontSize = 20.sp,
+                    fontFamily = AppTheme.pixelFontFamily
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("OK", fontFamily = AppTheme.pixelFontFamily)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun StreakRewardDialog(streak: Int, reward: Int, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "Daily Streak: Day $streak!",
+                fontFamily = AppTheme.pixelFontFamily,
+                fontSize = 24.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    "You've logged in for $streak consecutive days!",
+                    fontFamily = AppTheme.pixelFontFamily,
+                    fontSize = 18.sp,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    "+$reward GEARS",
+                    fontFamily = AppTheme.pixelFontFamily,
+                    fontSize = 32.sp,
+                    color = Color(0xFFFFC107),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = AppTheme.blueButtonColor)
+            ) {
+                Text(
+                    "Awesome!",
+                    fontFamily = AppTheme.pixelFontFamily,
+                    fontSize = 18.sp,
+                    color = Color.White
+                )
+            }
+        },
+        containerColor = Color(0xFF333333),
+        titleContentColor = Color.White,
+        textContentColor = Color.White
+    )
+}
+
+@Composable
+private fun PopupToggle(
+    enabled: Boolean,
+    activity: String,
+    cooldownActive: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 12.dp)
+    ) {
+        Text(
+            "Off/On",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            fontFamily = AppTheme.pixelFontFamily
+        )
+        Spacer(Modifier.height(8.dp))
+
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(80.dp, 48.dp)
+        ) {
+            Switch(
+                checked = enabled,
+                onCheckedChange = {
+                    if (!enabled || !cooldownActive) {
+                        onToggle(!enabled)
+                    }
+                },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = Color(0xFF4B89DC),
+                    uncheckedThumbColor = Color.LightGray,
+                    uncheckedTrackColor = Color(0xFF444444),
+                    disabledCheckedThumbColor = Color.LightGray,
+                    disabledCheckedTrackColor = Color(0xFF7AA8E8)
+                ),
+                enabled = !cooldownActive || !enabled,
+                modifier = Modifier.size(80.dp, 48.dp)
+            )
+
+            if (cooldownActive && enabled) {
+                val cooldownSeconds = remember { mutableStateOf(5) }
+
+                LaunchedEffect(cooldownActive) {
+                    for (i in 5 downTo 1) {
+                        cooldownSeconds.value = i
+                        delay(1000)
+                    }
+                }
+
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(80.dp, 48.dp)
+                        .background(Color(0x80000000), shape = RoundedCornerShape(16.dp))
+                ) {
+                    Text(
+                        text = "${cooldownSeconds.value}",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        if (enabled) {
+            Spacer(Modifier.height(8.dp))
+            Text("glhf", fontSize = 18.sp, color = Color.White, fontFamily = AppTheme.pixelFontFamily)
         }
     }
 }
@@ -159,7 +371,6 @@ private fun DropdownSelector(
         )
         Spacer(Modifier.height(4.dp))
         Box {
-            // Button with disabled state styling
             Button(
                 onClick = onExpandChange,
                 shape = RoundedCornerShape(8.dp),
@@ -178,12 +389,13 @@ private fun DropdownSelector(
                 )
             }
 
-            // Only show dropdown if enabled
             if (enabled && expanded) {
                 DropdownMenu(
                     expanded = expanded,
                     onDismissRequest = onExpandChange,
-                    modifier = Modifier.width(200.dp).background(Color.White)
+                    modifier = Modifier
+                        .width(200.dp)
+                        .background(Color.White)
                 ) {
                     options.forEach { option ->
                         DropdownMenuItem(
@@ -204,8 +416,6 @@ private fun DropdownSelector(
     Spacer(Modifier.height(16.dp))
 }
 
-
-// New composable for the countdown timer
 @Composable
 private fun CountdownTimer(timeRemaining: Long) {
     val minutes = timeRemaining / 60000
@@ -225,47 +435,12 @@ private fun CountdownTimer(timeRemaining: Long) {
     )
 }
 
-
-@Composable
-private fun PopupToggle(enabled: Boolean, activity: String, onToggle: (Boolean) -> Unit) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 12.dp) // Reduced vertical padding
-    ) {
-        Text(
-            "Off/On",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
-            fontFamily = AppTheme.pixelFontFamily
-        )
-        Spacer(Modifier.height(8.dp)) // Reduced spacing
-        Switch(
-            checked = enabled,
-            onCheckedChange = onToggle,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = Color(0xFF4B89DC),
-                uncheckedThumbColor = Color.LightGray,
-                uncheckedTrackColor = Color(0xFF444444)
-            ),
-            modifier = Modifier.size(80.dp, 48.dp)
-        )
-        if (enabled) {
-            Spacer(Modifier.height(8.dp)) // Reduced spacing
-            Text("glhf", fontSize = 18.sp, color = Color.White, fontFamily = AppTheme.pixelFontFamily)
-        }
-    }
-}
-
 @Composable
 private fun ProfileButton(navController: NavController) {
     Box(
         Modifier
             .fillMaxSize()
-            .padding(end = 24.dp, bottom = 24.dp), // Reduced bottom padding
+            .padding(end = 24.dp, bottom = 24.dp),
         contentAlignment = Alignment.BottomEnd
     ) {
         Button(
@@ -287,4 +462,38 @@ private fun ProfileButton(navController: NavController) {
             )
         }
     }
+}
+
+@Composable
+private fun LogoutButton(navController: NavController) {
+    val navigationController = remember { NavigationController(navController) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(start = 24.dp, bottom = 24.dp),
+        contentAlignment = Alignment.BottomStart,
+        content = {
+            Button(
+                onClick = {
+                    navigationController.navigateToWelcome()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.size(width = 120.dp, height = 50.dp)
+            ) {
+                Text(
+                    "Logout",
+                    fontSize = 22.sp,
+                    color = AppTheme.darkBlueButtonColor,
+                    style = AppTheme.pixelTextStyle.copy(
+                        shadow = AppTheme.pixelTextStyle.shadow?.copy(
+                            blurRadius = 1f,
+                            offset = androidx.compose.ui.geometry.Offset(2f, 2f)
+                        )
+                    )
+                )
+            }
+        }
+    )
 }
