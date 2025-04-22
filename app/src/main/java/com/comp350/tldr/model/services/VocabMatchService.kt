@@ -1,7 +1,6 @@
 package com.comp350.tldr.model.services
 
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
@@ -9,21 +8,30 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
-import android.view.*
+import android.view.Gravity
+import android.view.MotionEvent
+import android.view.View
+import android.view.WindowManager
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import java.util.Timer
 import kotlin.math.abs
-import kotlin.random.Random
-import java.util.*
 
 class VocabMatchService : Service() {
     private val serviceIdentifier = "VocabMatchService"
     private lateinit var windowManager: WindowManager
     private val cards = mutableListOf<View>()
     private val cardPairs = mutableMapOf<String, String>()
+    private var lessonCoroutineJob: Job? = null
 
     private val sampleQuestions = listOf(
         "What are variables used for?" to "To store data",
@@ -95,7 +103,7 @@ class VocabMatchService : Service() {
         handler.post { refreshCards() }
 
         // Schedule regular refresh based on the interval
-        startRefreshTimer()
+        startVocabScheduler()
 
 
     }
@@ -113,21 +121,28 @@ class VocabMatchService : Service() {
         }
     }
 
-    private fun startRefreshTimer() {
-        timer?.cancel()
-        timer = Timer()
-        timer?.scheduleAtFixedRate(object : TimerTask() {
-            override fun run() {
-                Handler(Looper.getMainLooper()).post {
-                    Log.d(serviceIdentifier, "Timer triggered at interval: $intervalMs ms")
-                    if (waitingForNextSet) {
-                        refreshCards()
-                        waitingForNextSet = false
-                    }
-                }
+private fun startVocabScheduler() {
+    // Cancel any existing job
+    lessonCoroutineJob?.cancel()
+
+    // Create a new job
+    lessonCoroutineJob = CoroutineScope(Dispatchers.Main).launch {
+        Toast.makeText(
+            this@VocabMatchService,
+            "Vocab Match Activated!",
+            Toast.LENGTH_SHORT
+        ).show()
+
+        while (isActive) {
+            if (waitingForNextSet) {
+                refreshCards()
+                waitingForNextSet = false
             }
-        }, intervalMs, intervalMs) // Use the specified interval
+            delay(intervalMs) //Repeat at interval
+        }
+
     }
+}
 
     private fun refreshCards() {
         removeAllCards()
