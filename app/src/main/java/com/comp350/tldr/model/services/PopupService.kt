@@ -68,17 +68,27 @@ class PopQuizService : Service() {
         when (intent.action) {
             "START_SERVICE" -> handleStart(intent)
             "STOP_SERVICE" -> stopSelf()
+            "SHOW_NOW" -> {
+                // Immediately show popup based on current activity type
+                Log.d(serviceIdentifier, "SHOW_NOW action received - showing popup immediately")
+                Toast.makeText(this, "Showing ${currentActivity} popup now", Toast.LENGTH_SHORT).show()
+
+                when (currentActivity) {
+                    "Trivia" -> showRandomQuiz()
+                    "Video" -> showVideoPopup()
+                    "Flashcards" -> displayAllFlashcards()
+                }
+            }
         }
 
         return START_NOT_STICKY
     }
-
     private fun handleStart(intent: Intent) {
         currentTopic = intent.getStringExtra("topic") ?: "Python"
         currentActivity = intent.getStringExtra("activity") ?: "Trivia"
-        intervalMs = intent.getLongExtra("interval", 60000)
+        intervalMs = intent.getLongExtra("interval", 60000) // Default to 60 seconds if not provided
 
-        Log.d(serviceIdentifier, "Service started with activity: $currentActivity")
+        Log.d(serviceIdentifier, "Service started with topic: $currentTopic, activity: $currentActivity, interval: $intervalMs ms")
 
         // Cancel any existing timers
         timer?.cancel()
@@ -87,7 +97,7 @@ class PopQuizService : Service() {
         // For all activities, start with a 10-second delay
         when (currentActivity) {
             "Flashcards" -> {
-                Log.d(serviceIdentifier, "Starting flashcard mode")
+                Log.d(serviceIdentifier, "Starting flashcard mode with interval: $intervalMs ms")
                 removeAllOverlays() // Clear any existing overlays
 
                 // Schedule initial display after 10 seconds
@@ -95,26 +105,28 @@ class PopQuizService : Service() {
                     override fun run() {
                         Handler(Looper.getMainLooper()).post {
                             try {
+                                Log.d(serviceIdentifier, "Displaying initial flashcards")
                                 displayAllFlashcards()
                             } catch (e: Exception) {
                                 Log.e(serviceIdentifier, "Initial flashcard display error", e)
                             }
                         }
                     }
-                }, 10000) // 10 seconds initial delay
+                }, 0)
 
-                // Then schedule regular refreshes every 60 seconds
+                // Then schedule regular refreshes with the provided interval
                 timer?.scheduleAtFixedRate(object : TimerTask() {
                     override fun run() {
                         Handler(Looper.getMainLooper()).post {
                             try {
+                                Log.d(serviceIdentifier, "Refreshing flashcards at interval: $intervalMs ms")
                                 refreshAllFlashcards()
                             } catch (e: Exception) {
                                 Log.e(serviceIdentifier, "Flashcard refresh error", e)
                             }
                         }
                     }
-                }, 10000 + intervalMs, intervalMs) // Start after initial delay + interval
+                }, 10000 + intervalMs, intervalMs) // Start after initial delay + user-specified interval
             }
             else -> { // Trivia or Video
                 // First timer task with 10-second delay for initial display
@@ -122,36 +134,60 @@ class PopQuizService : Service() {
                     override fun run() {
                         Handler(Looper.getMainLooper()).post {
                             try {
+                                Log.d(serviceIdentifier, "Displaying initial popup for activity: $currentActivity")
                                 when (currentActivity) {
                                     "Trivia" -> showRandomQuiz()
                                     "Video" -> showVideoPopup()
+                                    "VocabMatch" -> {
+                                        // Handle VocabMatch if needed
+                                        Log.d(serviceIdentifier, "VocabMatch is handled by a different service")
+                                    }
                                 }
                             } catch (e: Exception) {
                                 Log.e(serviceIdentifier, "Initial display error", e)
                             }
                         }
                     }
-                }, 10000) // 10 seconds initial delay
+                }, 0)
 
-                // Then start the regular interval
+                // Then start the regular interval using the user-specified interval
                 timer?.scheduleAtFixedRate(object : TimerTask() {
                     override fun run() {
                         Handler(Looper.getMainLooper()).post {
                             try {
+                                Log.d(serviceIdentifier, "Showing popup at interval: $intervalMs ms for activity: $currentActivity")
                                 when (currentActivity) {
                                     "Trivia" -> showRandomQuiz()
                                     "Video" -> showVideoPopup()
+                                    "VocabMatch" -> {
+                                        // Handle VocabMatch if needed
+                                        Log.d(serviceIdentifier, "VocabMatch is handled by a different service")
+                                    }
                                 }
                             } catch (e: Exception) {
                                 Log.e(serviceIdentifier, "Scheduler error", e)
                             }
                         }
                     }
-                }, 10000 + intervalMs, intervalMs) // Start after initial delay + interval
+                }, 0 + intervalMs, intervalMs)
             }
         }
+
+
     }
 
+    // Helper method to format interval for display
+    private fun formatIntervalForDisplay(intervalMs: Long): String {
+        return when (intervalMs) {
+            60000L -> "1 minute"
+            300000L -> "5 minutes"
+            600000L -> "10 minutes"
+            1800000L -> "30 minutes"
+            3600000L -> "1 hour"
+            7200000L -> "2 hours"
+            else -> "${intervalMs / 60000} minutes"
+        }
+    }
     private fun startScheduler() {
         timer?.cancel()
         timer = Timer()
