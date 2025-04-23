@@ -1,17 +1,18 @@
 package com.comp350.tldr.controller.viewmodels
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.os.CountDownTimer
 import android.os.Handler
+import android.util.Log
+import android.content.Intent
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import com.comp350.tldr.controllers.QuizController
 import com.comp350.tldr.controllers.DailyStreakManager
 import com.comp350.tldr.controllers.UserController
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import android.content.Intent
-import android.widget.Toast
-import android.util.Log
 
 class MainMenuViewModel : ViewModel() {
     private val _topic = MutableStateFlow("Python")
@@ -29,6 +30,13 @@ class MainMenuViewModel : ViewModel() {
     private val _streak = MutableStateFlow(0)
     val streak: StateFlow<Int> = _streak
 
+    // Add state for sunglasses - this is the important part
+    private val _isWearingSunglasses = MutableStateFlow(false)
+    val isWearingSunglasses: StateFlow<Boolean> = _isWearingSunglasses
+
+    private val _hasUnlockedSunglasses = MutableStateFlow(false)
+    val hasUnlockedSunglasses: StateFlow<Boolean> = _hasUnlockedSunglasses
+
     private var countdownTimer: CountDownTimer? = null
 
     private val _popupEnabled = MutableStateFlow(false)
@@ -40,39 +48,49 @@ class MainMenuViewModel : ViewModel() {
 
     private var streakManager: DailyStreakManager? = null
 
+    // IMPORTANT: Use the same keys as your ProfileViewModel
+    private val PREFS_FILE = "com.comp350.tldr.preferences"
+    private val PREFS_SUNGLASSES_UNLOCKED = "sunglasses_unlocked"
+    private val PREFS_WEARING_SUNGLASSES = "wearing_sunglasses"
+
+    // This loads sunglasses state from SharedPreferences
+    fun loadUserData(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
+        _hasUnlockedSunglasses.value = prefs.getBoolean(PREFS_SUNGLASSES_UNLOCKED, false)
+        _isWearingSunglasses.value = prefs.getBoolean(PREFS_WEARING_SUNGLASSES, false)
+
+        // Log to help with debugging
+        Log.d("MainMenuViewModel", "Loaded sunglasses data - unlocked: ${_hasUnlockedSunglasses.value}, wearing: ${_isWearingSunglasses.value}")
+    }
+
     fun initStreakManager(context: Context) {
         streakManager = DailyStreakManager(context)
         _streak.value = streakManager?.getCurrentStreak() ?: 0
     }
 
-    // Modified to accept context parameter
     fun checkDailyStreak(context: Context, onReward: (Int) -> Unit) {
         val manager = streakManager ?: return
         manager.checkAndUpdateStreak { newStreak, reward ->
             _streak.value = newStreak
-
             if (reward > 0) {
-                // Award the gears using the passed context
                 awardStreakReward(context, reward)
                 onReward(reward)
             }
         }
     }
 
-    // Added this method inside the class
     private fun awardStreakReward(context: Context, reward: Int) {
-        // Get the user controller to update the gears
         val userController = UserController(context)
         val currentUser = userController.getCurrentUser()
         if (currentUser != null) {
             val updatedGears = currentUser.gears + reward
             userController.updateGears(updatedGears)
-            // Log the update
             Log.d("MainMenuViewModel", "Updated gears: $updatedGears (+$reward)")
         }
     }
 
     fun setTopic(value: String) { _topic.value = value }
+
     fun setActivity(value: String) { _activity.value = value }
 
     fun setInterval(value: String, context: Context) {
@@ -85,14 +103,11 @@ class MainMenuViewModel : ViewModel() {
     }
 
     fun togglePopup(enabled: Boolean, context: Context) {
-        // Initialize streak manager if needed
         if (streakManager == null) {
             initStreakManager(context)
         }
-
         val intervalMs = getIntervalMillis(_interval.value)
 
-        // Stop any existing services first regardless of enabled state
         when (_activity.value) {
             "VocabMatch" -> {
                 val intent = Intent(context, com.comp350.tldr.model.services.VocabMatchService::class.java)
@@ -103,7 +118,6 @@ class MainMenuViewModel : ViewModel() {
                 quiz.stopPopupService()
             }
         }
-
         Handler().postDelayed({
             if (enabled) {
                 when (_activity.value) {
@@ -113,18 +127,14 @@ class MainMenuViewModel : ViewModel() {
                             putExtra("interval", intervalMs)
                         }
                         context.startService(intent)
-
                     }
                     else -> {
                         val quiz = QuizController(context)
                         quiz.startPopupService(_topic.value, _activity.value, intervalMs)
-
                     }
                 }
-
                 startCountdownTimer(intervalMs)
             }
-
             _popupEnabled.value = enabled
         }, 100)
     }
@@ -156,12 +166,10 @@ class MainMenuViewModel : ViewModel() {
     private fun startCountdownTimer(intervalMs: Long) {
         stopCountdownTimer()
         _timeRemaining.value = intervalMs
-
         countdownTimer = object : CountDownTimer(intervalMs, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 _timeRemaining.value = millisUntilFinished
             }
-
             override fun onFinish() {
                 startCountdownTimer(intervalMs)
             }
@@ -177,4 +185,5 @@ class MainMenuViewModel : ViewModel() {
         super.onCleared()
         stopCountdownTimer()
     }
+
 }

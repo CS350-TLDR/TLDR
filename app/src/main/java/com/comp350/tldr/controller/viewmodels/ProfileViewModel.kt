@@ -25,6 +25,14 @@ class ProfileViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _hasUnlockedSunglasses = MutableStateFlow(false)
+    val hasUnlockedSunglasses: StateFlow<Boolean> = _hasUnlockedSunglasses.asStateFlow()
+
+    private val _isWearingSunglasses = MutableStateFlow(false)
+    val isWearingSunglasses: StateFlow<Boolean> = _isWearingSunglasses.asStateFlow()
+
+    private val SUNGLASSES_COST = 5
+
     fun loadUserData(context: Context) {
         _isLoading.value = true
 
@@ -42,12 +50,16 @@ class ProfileViewModel : ViewModel() {
                 _nickname.value = userPrefs.getString("nickname", "Academia Lord") ?: "Academia Lord"
                 _questionsAnswered.value = userPrefs.getInt("questions_answered", 0)
                 _gears.value = userPrefs.getInt("gears", 0)
+                _hasUnlockedSunglasses.value = userPrefs.getBoolean("has_unlocked_sunglasses", false)
+                _isWearingSunglasses.value = userPrefs.getBoolean("is_wearing_sunglasses", false)
             } else {
                 // Anonymous user or not logged in
                 val sharedPrefs = context.getSharedPreferences("tldr_prefs", Context.MODE_PRIVATE)
                 _nickname.value = sharedPrefs.getString("nickname", "TLDR Player") ?: "TLDR Player"
                 _questionsAnswered.value = sharedPrefs.getInt("questions_answered", 0)
                 _gears.value = sharedPrefs.getInt("gears", 0)
+                _hasUnlockedSunglasses.value = sharedPrefs.getBoolean("has_unlocked_sunglasses", false)
+                _isWearingSunglasses.value = sharedPrefs.getBoolean("is_wearing_sunglasses", false)
             }
         } catch (e: Exception) {
             // Handle errors
@@ -82,6 +94,72 @@ class ProfileViewModel : ViewModel() {
             _isEditing.value = false
         } catch (e: Exception) {
             // Handle errors
+        }
+    }
+
+    fun purchaseSunglasses(context: Context) {
+        if (_gears.value < SUNGLASSES_COST) return
+        _isLoading.value = true
+
+        try {
+            val currentUser = auth.currentUser
+            val updatedGears = _gears.value - SUNGLASSES_COST
+
+            if (currentUser != null) {
+                val userId = currentUser.uid
+                val userPrefs = context.getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE)
+                userPrefs.edit()
+                    .putInt("gears", updatedGears)
+                    .putBoolean("has_unlocked_sunglasses", true)
+                    .putBoolean("is_wearing_sunglasses", true)
+                    .apply()
+            } else {
+                val sharedPrefs = context.getSharedPreferences("tldr_prefs", Context.MODE_PRIVATE)
+                sharedPrefs.edit()
+                    .putInt("gears", updatedGears)
+                    .putBoolean("has_unlocked_sunglasses", true)
+                    .putBoolean("is_wearing_sunglasses", true)
+                    .apply()
+            }
+
+            _gears.value = updatedGears
+            _hasUnlockedSunglasses.value = true
+            _isWearingSunglasses.value = true
+
+        } catch (e: Exception) {
+            // Handle errors
+        } finally {
+            _isLoading.value = false
+        }
+    }
+
+    fun toggleWearingSunglasses(context: Context) {
+        if (!_hasUnlockedSunglasses.value) return
+        _isLoading.value = true
+
+        try {
+            val newWearingState = !_isWearingSunglasses.value
+            val currentUser = auth.currentUser
+
+            if (currentUser != null) {
+                val userId = currentUser.uid
+                val userPrefs = context.getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE)
+                userPrefs.edit()
+                    .putBoolean("is_wearing_sunglasses", newWearingState)
+                    .apply()
+            } else {
+                val sharedPrefs = context.getSharedPreferences("tldr_prefs", Context.MODE_PRIVATE)
+                sharedPrefs.edit()
+                    .putBoolean("is_wearing_sunglasses", newWearingState)
+                    .apply()
+            }
+
+            _isWearingSunglasses.value = newWearingState
+
+        } catch (e: Exception) {
+            // Handle errors
+        } finally {
+            _isLoading.value = false
         }
     }
 }

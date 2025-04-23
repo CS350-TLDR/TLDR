@@ -17,17 +17,22 @@ import com.comp350.tldr.controller.navigation.NavigationController
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.comp350.tldr.R
 import com.comp350.tldr.controller.viewmodels.MainMenuViewModel
+import com.comp350.tldr.controller.viewmodels.ProfileViewModel
+import com.comp350.tldr.view.screens.ProfileScreen
 import com.comp350.tldr.view.components.PixelBackground
 import com.comp350.tldr.view.theme.AppTheme
 import kotlinx.coroutines.delay
@@ -43,6 +48,9 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
     val timeRemaining by vm.timeRemaining.collectAsState()
     val streak by vm.streak.collectAsState()
 
+
+    val isWearingSunglasses by vm.isWearingSunglasses.collectAsState()
+
     var toggleCooldown by remember { mutableStateOf(false) }
     var showStreakDialog by remember { mutableStateOf(false) }
     var streakReward by remember { mutableStateOf(0) }
@@ -51,7 +59,11 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
     var activityOpen by remember { mutableStateOf(false) }
     var intervalOpen by remember { mutableStateOf(false) }
 
+    // This runs every time the screen appears
     LaunchedEffect(Unit) {
+        // IMPORTANT: Load the latest user data (including sunglasses state)
+        vm.loadUserData(ctx)
+
         vm.initStreakManager(ctx)
         vm.checkDailyStreak(ctx) { reward ->
             if (reward > 0) {
@@ -70,11 +82,18 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Image(
-                    painterResource(R.drawable.robot),
-                    null,
-                    Modifier.size(160.dp).padding(16.dp)
-                )
+                // Replace the original Image with RobotWithCustomization
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    RobotWithCustomization(
+                        isWearingSunglasses = isWearingSunglasses,
+                        size = 160,
+                        sunglassesOffsetY = -16
+                    )
+                }
+
                 Spacer(Modifier.height(16.dp))
 
                 DropdownSelector(
@@ -456,7 +475,7 @@ private fun ProfileButton(navController: NavController) {
                 style = AppTheme.pixelTextStyle.copy(
                     shadow = AppTheme.pixelTextStyle.shadow?.copy(
                         blurRadius = 1f,
-                        offset = androidx.compose.ui.geometry.Offset(2f, 2f)
+                        offset = Offset(2f, 2f)
                     )
                 )
             )
@@ -489,7 +508,7 @@ private fun LogoutButton(navController: NavController) {
                     style = AppTheme.pixelTextStyle.copy(
                         shadow = AppTheme.pixelTextStyle.shadow?.copy(
                             blurRadius = 1f,
-                            offset = androidx.compose.ui.geometry.Offset(2f, 2f)
+                            offset = Offset(2f, 2f)
                         )
                     )
                 )
