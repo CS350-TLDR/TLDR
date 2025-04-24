@@ -22,7 +22,7 @@ fun VideoPlayer(modifier: Modifier = Modifier, onVideoFinished: () -> Unit) {
         Uri.parse("android.resource://${context.packageName}/${R.raw.pythonbasics}"),
         Uri.parse("android.resource://${context.packageName}/${R.raw.oop_spongeb}"),
         Uri.parse("android.resource://${context.packageName}/${R.raw.drake}"),
-        Uri.parse("android.resource://${context.packageName}/${R.raw.joeRogan}")
+        Uri.parse("android.resource://${context.packageName}/${R.raw.joerogan}")
 
     )
 
