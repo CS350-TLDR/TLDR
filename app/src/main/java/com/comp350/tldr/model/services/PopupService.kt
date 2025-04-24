@@ -674,7 +674,7 @@ class PopQuizService : Service() {
         videoViewComponent = video
 
         try {
-            val videoResIds = listOf(R.raw.pythonbasics, R.raw.oop_vs_functional, R.raw.oop_spongeb)
+            val videoResIds = listOf(R.raw.pythonbasics, R.raw.oop_vs_functional, R.raw. drake, R.raw.joeRogan)
             val randomVideoResId = videoResIds.random()
             val videoUri = Uri.parse("android.resource://$packageName/$randomVideoResId")
 

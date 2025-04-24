@@ -20,7 +20,10 @@ fun VideoPlayer(modifier: Modifier = Modifier, onVideoFinished: () -> Unit) {
     val videoUris = listOf(
         Uri.parse("android.resource://${context.packageName}/${R.raw.oop_vs_functional}"),
         Uri.parse("android.resource://${context.packageName}/${R.raw.pythonbasics}"),
-        Uri.parse("android.resource://${context.packageName}/${R.raw.oop_spongeb}")
+        Uri.parse("android.resource://${context.packageName}/${R.raw.oop_spongeb}"),
+        Uri.parse("android.resource://${context.packageName}/${R.raw.drake}"),
+        Uri.parse("android.resource://${context.packageName}/${R.raw.joerogan}")
+
     )
 
     val videoUri = remember { videoUris.random() }

@@ -7,4 +7,5 @@ object NavRoutes {
     const val MAIN_MENU = "main_menu"
     const val PROFILE = "profile"
     const val RESULTS_PAGE = "results_page/{score}/{totalQuestions}"
+    const val TUTORIAL = "tutorial"
 }
