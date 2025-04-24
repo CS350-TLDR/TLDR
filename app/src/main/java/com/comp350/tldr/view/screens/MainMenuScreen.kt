@@ -6,91 +6,368 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import com.comp350.tldr.controller.navigation.NavigationController
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.comp350.tldr.R
-import com.comp350.tldr.controller.navigation.NavigationController
-import com.comp350.tldr.controllers.QuizController
+import com.comp350.tldr.controller.viewmodels.MainMenuViewModel
+import com.comp350.tldr.controller.viewmodels.ProfileViewModel
+import com.comp350.tldr.view.screens.ProfileScreen
 import com.comp350.tldr.view.components.PixelBackground
 import com.comp350.tldr.view.theme.AppTheme
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import com.comp350.tldr.controller.viewmodels.MainMenuViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
-
-
-
-// -- MainScreen
 @Composable
 fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewModel()) {
     val ctx = LocalContext.current
     val topic by vm.topic.collectAsState()
     val activity by vm.activity.collectAsState()
+    val interval by vm.interval.collectAsState()
     val enabled by vm.popupEnabled.collectAsState()
+    val timeRemaining by vm.timeRemaining.collectAsState()
+    val streak by vm.streak.collectAsState()
+
+
+    val isWearingSunglasses by vm.isWearingSunglasses.collectAsState()
+
+    var toggleCooldown by remember { mutableStateOf(false) }
+    var showStreakDialog by remember { mutableStateOf(false) }
+    var streakReward by remember { mutableStateOf(0) }
 
     var topicOpen by remember { mutableStateOf(false) }
     var activityOpen by remember { mutableStateOf(false) }
+    var intervalOpen by remember { mutableStateOf(false) }
+
+    // This runs every time the screen appears
+    LaunchedEffect(Unit) {
+        // IMPORTANT: Load the latest user data (including sunglasses state)
+        vm.loadUserData(ctx)
+
+        vm.initStreakManager(ctx)
+        vm.checkDailyStreak(ctx) { reward ->
+            if (reward > 0) {
+                streakReward = reward
+                showStreakDialog = true
+            }
+        }
+    }
 
     PixelBackground {
         Box(Modifier.fillMaxSize()) {
             Column(
                 Modifier
-                    .padding(16.dp)
+                    .padding(top = 8.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                RobotHeader()
-
-                DropdownSelector("Topic", topic, topicOpen, { topicOpen = !topicOpen }, vm.topics) {
-                    vm.setTopic(it)
-                    topicOpen = false
-                    if (enabled) vm.togglePopup(true, ctx)
+                // Replace the original Image with RobotWithCustomization
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    RobotWithCustomization(
+                        isWearingSunglasses = isWearingSunglasses,
+                        size = 160,
+                        sunglassesOffsetY = -16
+                    )
                 }
 
-                DropdownSelector("Activity", activity, activityOpen, { activityOpen = !activityOpen }, vm.activities) {
-                    vm.setActivity(it)
-                    activityOpen = false
-                    if (enabled) vm.togglePopup(true, ctx)
-                }
+                Spacer(Modifier.height(16.dp))
 
-                PopupToggle(enabled, activity) { toggled ->
-                    if (toggled && !Settings.canDrawOverlays(ctx)) {
-                        ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION))
-                        Toast.makeText(ctx, "Grant overlay permission for popups", Toast.LENGTH_LONG).show()
-                    } else {
-                        vm.togglePopup(toggled, ctx)
+                DropdownSelector(
+                    label = "Topic",
+                    selected = topic,
+                    expanded = topicOpen,
+                    onExpandChange = { if (!enabled) topicOpen = !topicOpen },
+                    options = vm.topics,
+                    enabled = !enabled,
+                    onSelect = {
+                        vm.setTopic(it)
+                        topicOpen = false
                     }
-                }
+                )
 
-                Spacer(Modifier.height(80.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                DropdownSelector(
+                    label = "Activity",
+                    selected = activity,
+                    expanded = activityOpen,
+                    onExpandChange = { if (!enabled) activityOpen = !activityOpen },
+                    options = vm.activities,
+                    enabled = !enabled,
+                    onSelect = {
+                        vm.setActivity(it)
+                        activityOpen = false
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                DropdownSelector(
+                    label = "Interval",
+                    selected = interval,
+                    expanded = intervalOpen,
+                    onExpandChange = { if (!enabled) intervalOpen = !intervalOpen },
+                    options = vm.intervals,
+                    enabled = !enabled,
+                    onSelect = {
+                        vm.setInterval(it, ctx)
+                        intervalOpen = false
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                PopupToggle(
+                    enabled = enabled,
+                    activity = activity,
+                    cooldownActive = toggleCooldown,
+                    onToggle = { toggled ->
+                        if (toggled && !Settings.canDrawOverlays(ctx)) {
+                            ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION))
+                            Toast.makeText(ctx, "Grant overlay permission for popups", Toast.LENGTH_LONG).show()
+                        } else {
+                            if (toggled) {
+                                toggleCooldown = true
+                                kotlinx.coroutines.MainScope().launch {
+                                    delay(5000)
+                                    toggleCooldown = false
+                                }
+                            }
+                            vm.togglePopup(toggled, ctx)
+                        }
+                    }
+                )
+
+                Spacer(Modifier.height(60.dp))
+            }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = 16.dp, start = 16.dp)
+            ) {
+                DailyStreakCounter(streak)
+            }
+
+            if (enabled) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 16.dp, end = 16.dp)
+                ) {
+                    CountdownTimer(timeRemaining)
+                }
             }
 
             ProfileButton(navController)
+            LogoutButton(navController)
+
+            if (showStreakDialog) {
+                StreakRewardDialog(
+                    streak = streak,
+                    reward = streakReward,
+                    onDismiss = { showStreakDialog = false }
+                )
+            }
         }
     }
 }
 
-// -- Reusable Composables
-@Composable private fun RobotHeader() {
-    Image(painterResource(R.drawable.robot), null, Modifier.size(180.dp).padding(24.dp))
-    Spacer(Modifier.height(32.dp))
+@Composable
+private fun DailyStreakCounter(streak: Int) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(56.dp)
+            .background(Color.White, shape = CircleShape)
+            .clickable {
+                showDialog = true
+            }
+    ) {
+        Text(
+            text = "$streak",
+            color = Color.Black,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = AppTheme.pixelFontFamily
+        )
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = {},
+            text = {
+                Text(
+                    "Daily Streak: Day $streak",
+                    fontSize = 20.sp,
+                    fontFamily = AppTheme.pixelFontFamily
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("OK", fontFamily = AppTheme.pixelFontFamily)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun StreakRewardDialog(streak: Int, reward: Int, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "Daily Streak: Day $streak!",
+                fontFamily = AppTheme.pixelFontFamily,
+                fontSize = 24.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    "You've logged in for $streak consecutive days!",
+                    fontFamily = AppTheme.pixelFontFamily,
+                    fontSize = 18.sp,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    "+$reward GEARS",
+                    fontFamily = AppTheme.pixelFontFamily,
+                    fontSize = 32.sp,
+                    color = Color(0xFFFFC107),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = AppTheme.blueButtonColor)
+            ) {
+                Text(
+                    "Awesome!",
+                    fontFamily = AppTheme.pixelFontFamily,
+                    fontSize = 18.sp,
+                    color = Color.White
+                )
+            }
+        },
+        containerColor = Color(0xFF333333),
+        titleContentColor = Color.White,
+        textContentColor = Color.White
+    )
+}
+
+@Composable
+private fun PopupToggle(
+    enabled: Boolean,
+    activity: String,
+    cooldownActive: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 12.dp)
+    ) {
+        Text(
+            "Off/On",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            fontFamily = AppTheme.pixelFontFamily
+        )
+        Spacer(Modifier.height(8.dp))
+
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(80.dp, 48.dp)
+        ) {
+            Switch(
+                checked = enabled,
+                onCheckedChange = {
+                    if (!enabled || !cooldownActive) {
+                        onToggle(!enabled)
+                    }
+                },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = Color(0xFF4B89DC),
+                    uncheckedThumbColor = Color.LightGray,
+                    uncheckedTrackColor = Color(0xFF444444),
+                    disabledCheckedThumbColor = Color.LightGray,
+                    disabledCheckedTrackColor = Color(0xFF7AA8E8)
+                ),
+                enabled = !cooldownActive || !enabled,
+                modifier = Modifier.size(80.dp, 48.dp)
+            )
+
+            if (cooldownActive && enabled) {
+                val cooldownSeconds = remember { mutableStateOf(5) }
+
+                LaunchedEffect(cooldownActive) {
+                    for (i in 5 downTo 1) {
+                        cooldownSeconds.value = i
+                        delay(1000)
+                    }
+                }
+
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(80.dp, 48.dp)
+                        .background(Color(0x80000000), shape = RoundedCornerShape(16.dp))
+                ) {
+                    Text(
+                        text = "${cooldownSeconds.value}",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        if (enabled) {
+            Spacer(Modifier.height(8.dp))
+            Text("glhf", fontSize = 18.sp, color = Color.White, fontFamily = AppTheme.pixelFontFamily)
+        }
+    }
 }
 
 @Composable
@@ -98,62 +375,144 @@ private fun DropdownSelector(
     label: String,
     selected: String,
     expanded: Boolean,
-    toggle: () -> Unit,
+    onExpandChange: () -> Unit,
     options: List<String>,
+    enabled: Boolean,
     onSelect: (String) -> Unit
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color.White, style = AppTheme.pixelTextStyle)
-        Spacer(Modifier.height(8.dp))
+        Text(
+            label,
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            style = AppTheme.pixelTextStyle
+        )
+        Spacer(Modifier.height(4.dp))
         Box {
-            Button(onClick = toggle, shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.White)) {
-                Text(selected, fontSize = 26.sp, color = AppTheme.darkBlueButtonColor, style = AppTheme.pixelTextStyleSmall)
+            Button(
+                onClick = onExpandChange,
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    disabledContainerColor = Color.Gray
+                ),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                enabled = enabled
+            ) {
+                Text(
+                    selected,
+                    fontSize = 24.sp,
+                    color = if (enabled) AppTheme.darkBlueButtonColor else Color.DarkGray,
+                    style = AppTheme.pixelTextStyleSmall
+                )
             }
-            DropdownMenu(expanded, toggle, Modifier.width(200.dp).background(Color.White)) {
-                options.forEach { option ->
-                    DropdownMenuItem(text = { Text(option, fontSize = 24.sp, fontFamily = AppTheme.pixelFontFamily) }, onClick = { onSelect(option) })
+
+            if (enabled && expanded) {
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = onExpandChange,
+                    modifier = Modifier
+                        .width(200.dp)
+                        .background(Color.White)
+                ) {
+                    options.forEach { option ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    option,
+                                    fontSize = 22.sp,
+                                    fontFamily = AppTheme.pixelFontFamily
+                                )
+                            },
+                            onClick = { onSelect(option) }
+                        )
+                    }
                 }
             }
         }
     }
-    Spacer(Modifier.height(24.dp))
+    Spacer(Modifier.height(16.dp))
 }
 
 @Composable
-private fun PopupToggle(enabled: Boolean, activity: String, onToggle: (Boolean) -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(24.dp)) {
-        Text("Off/On", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White, fontFamily = AppTheme.pixelFontFamily)
-        Spacer(Modifier.height(12.dp))
-        Switch(
-            checked = enabled,
-            onCheckedChange = onToggle,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = Color(0xFF4B89DC),
-                uncheckedThumbColor = Color.LightGray,
-                uncheckedTrackColor = Color(0xFF444444)
-            ),
-            modifier = Modifier.size(80.dp, 48.dp)
-        )
-        if (enabled) {
-            Spacer(Modifier.height(12.dp))
-            Text("glhf", fontSize = 18.sp, color = Color.White, fontFamily = AppTheme.pixelFontFamily)
-        }
-    }
+private fun CountdownTimer(timeRemaining: Long) {
+    val minutes = timeRemaining / 60000
+    val seconds = (timeRemaining % 60000) / 1000
+
+    Text(
+        text = String.format("%02d:%02d", minutes, seconds),
+        color = Color.White,
+        fontSize = 24.sp,
+        fontFamily = AppTheme.pixelFontFamily,
+        modifier = Modifier
+            .background(
+                color = AppTheme.darkBlueButtonColor,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    )
 }
 
 @Composable
 private fun ProfileButton(navController: NavController) {
-    Box(Modifier.fillMaxSize().padding(end = 24.dp, bottom = 32.dp), contentAlignment = Alignment.BottomEnd) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .padding(end = 24.dp, bottom = 24.dp),
+        contentAlignment = Alignment.BottomEnd
+    ) {
         Button(
             onClick = { navController.navigate("profile") },
             colors = ButtonDefaults.buttonColors(containerColor = Color.White),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.size(width = 120.dp, height = 50.dp)
         ) {
-            Text("Profile", fontSize = 22.sp, color = AppTheme.darkBlueButtonColor, style = AppTheme.pixelTextStyle.copy(
-                shadow = AppTheme.pixelTextStyle.shadow?.copy(blurRadius = 1f, offset = androidx.compose.ui.geometry.Offset(2f, 2f))
-            ))
+            Text(
+                "Profile",
+                fontSize = 22.sp,
+                color = AppTheme.darkBlueButtonColor,
+                style = AppTheme.pixelTextStyle.copy(
+                    shadow = AppTheme.pixelTextStyle.shadow?.copy(
+                        blurRadius = 1f,
+                        offset = Offset(2f, 2f)
+                    )
+                )
+            )
         }
     }
+}
+
+@Composable
+private fun LogoutButton(navController: NavController) {
+    val navigationController = remember { NavigationController(navController) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(start = 24.dp, bottom = 24.dp),
+        contentAlignment = Alignment.BottomStart,
+        content = {
+            Button(
+                onClick = {
+                    navigationController.navigateToWelcome()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.size(width = 120.dp, height = 50.dp)
+            ) {
+                Text(
+                    "Logout",
+                    fontSize = 22.sp,
+                    color = AppTheme.darkBlueButtonColor,
+                    style = AppTheme.pixelTextStyle.copy(
+                        shadow = AppTheme.pixelTextStyle.shadow?.copy(
+                            blurRadius = 1f,
+                            offset = Offset(2f, 2f)
+                        )
+                    )
+                )
+            }
+        }
+    )
 }

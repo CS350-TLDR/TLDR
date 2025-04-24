@@ -1,27 +1,37 @@
 package com.comp350.tldr.model.services
 
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
-import android.view.*
+import android.view.Gravity
+import android.view.MotionEvent
+import android.view.View
+import android.view.WindowManager
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import java.util.Timer
 import kotlin.math.abs
-import kotlin.random.Random
-import java.util.*
 
 class VocabMatchService : Service() {
+    private val serviceIdentifier = "VocabMatchService"
     private lateinit var windowManager: WindowManager
     private val cards = mutableListOf<View>()
     private val cardPairs = mutableMapOf<String, String>()
+    private var vocabCoroutineJob: Job? = null
 
     private val sampleQuestions = listOf(
         "What are variables used for?" to "To store data",
@@ -47,39 +57,98 @@ class VocabMatchService : Service() {
     )
 
     private val correctMatches = mutableSetOf<String>()
-    private val refreshInterval = 60000L
+    private val matchedCards = mutableSetOf<View>()
+    private var intervalMs: Long = 60000L // Default 60 seconds
     private var timer: Timer? = null
     private var waitingForNextSet = false
-    private val handler = Handler()
+    private val handler = Handler(Looper.getMainLooper())
     private var gearsEarned = 0
+    private var totalPairs = 0
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
+        Log.d(serviceIdentifier, "VocabMatchService created")
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        startRefreshTimer()
-        handler.postDelayed({ refreshCards() }, refreshInterval)
     }
 
-    private fun startRefreshTimer() {
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        intent ?: return START_NOT_STICKY
+
+        when (intent.action) {
+            "START_SERVICE" -> handleStart(intent)
+            "STOP_SERVICE" -> stopSelf()
+            "SHOW_NOW" -> {
+                // Immediately show cards for testing purposes
+                Log.d(serviceIdentifier, "SHOW_NOW action received - showing cards immediately")
+                Toast.makeText(this, "Showing VocabMatch cards now", Toast.LENGTH_SHORT).show()
+                refreshCards()
+            }
+        }
+
+        return START_NOT_STICKY
+    }
+
+    private fun handleStart(intent: Intent) {
+        // Get interval from intent (with default value)
+        intervalMs = intent.getLongExtra("interval", 60000L)
+
+
+
+        // Cancel any existing timers
         timer?.cancel()
         timer = Timer()
-        timer?.scheduleAtFixedRate(object : TimerTask() {
-            override fun run() {
-                Handler(mainLooper).post {
-                    if (waitingForNextSet) {
-                        refreshCards()
-                        waitingForNextSet = false
-                    }
-                }
-            }
-        }, refreshInterval, refreshInterval)
+
+        // Show cards immediately (without initial delay)
+        handler.post { refreshCards() }
+
+
+        startVocabScheduler()
+
+
     }
+
+    // Format interval for display
+    private fun formatIntervalForDisplay(intervalMs: Long): String {
+        return when (intervalMs) {
+            60000L -> "1 minute"
+            300000L -> "5 minutes"
+            600000L -> "10 minutes"
+            1800000L -> "30 minutes"
+            3600000L -> "1 hour"
+            7200000L -> "2 hours"
+            else -> "${intervalMs / 60000} minutes"
+        }
+    }
+
+private fun startVocabScheduler() {
+    // Cancel any existing job
+    vocabCoroutineJob?.cancel()
+
+    // Create a new job
+    vocabCoroutineJob = CoroutineScope(Dispatchers.Main).launch {
+        Toast.makeText(
+            this@VocabMatchService,
+            "Vocab Match Activated!",
+            Toast.LENGTH_SHORT
+        ).show()
+
+        while (isActive) {
+            if (waitingForNextSet) {
+                refreshCards()
+                waitingForNextSet = false
+            }
+            delay(intervalMs) //Repeat at interval
+        }
+
+    }
+}
 
     private fun refreshCards() {
         removeAllCards()
         correctMatches.clear()
+        matchedCards.clear()
         gearsEarned = 0
 
         val shuffled = sampleQuestions.shuffled().take(4)
@@ -87,6 +156,8 @@ class VocabMatchService : Service() {
         val answers = shuffled.map { it.second }
         val allItems = (questions + answers).shuffled()
         val screenWidth = resources.displayMetrics.widthPixels
+
+        totalPairs = shuffled.size
 
         allItems.forEachIndexed { index, label ->
             val card = createCard(label)
@@ -129,7 +200,7 @@ class VocabMatchService : Service() {
             windowManager.addView(button, params)
             cards.add(button)
         } catch (e: Exception) {
-            Log.e("VocabMatchService", "Error showing clear button", e)
+            Log.e(serviceIdentifier, "Error showing clear button", e)
         }
     }
 
@@ -166,6 +237,11 @@ class VocabMatchService : Service() {
             private var initialTouchY = 0f
 
             override fun onTouch(v: View, event: MotionEvent): Boolean {
+                // Skip processing for matched cards
+                if (matchedCards.contains(v)) {
+                    return false
+                }
+
                 val params = v.layoutParams as WindowManager.LayoutParams
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
@@ -199,7 +275,7 @@ class VocabMatchService : Service() {
         val draggedParams = draggedCard.layoutParams as WindowManager.LayoutParams
 
         for (card in cards) {
-            if (card == draggedCard) continue
+            if (card == draggedCard || matchedCards.contains(card)) continue
 
             val targetParams = card.layoutParams as WindowManager.LayoutParams
 
@@ -208,23 +284,51 @@ class VocabMatchService : Service() {
                 val isMatch = cardPairs[draggedText] == targetText || cardPairs[targetText] == draggedText
 
                 if (isMatch) {
-                    draggedCard.setBackgroundColor(Color.GREEN)
-                    card.setBackgroundColor(Color.GREEN)
+                    // Add both cards to matched sets
                     correctMatches.add(draggedText)
                     correctMatches.add(targetText)
+                    matchedCards.add(draggedCard)
+                    matchedCards.add(card)
                     gearsEarned++
+
+                    // Show brief flash of green to indicate match
+                    draggedCard.setBackgroundColor(Color.GREEN)
+                    card.setBackgroundColor(Color.GREEN)
 
                     Toast.makeText(this, "Correct Match! (+1 Gear)", Toast.LENGTH_SHORT).show()
 
-                    if (correctMatches.size == 8) {
-                        showGearPopup(gearsEarned)
-                        removeAllCards()
-                        waitingForNextSet = true
-                    }
+                    // Fade out and remove matched cards
+                    handler.postDelayed({
+                        try {
+                            // Remove the cards from window manager
+                            windowManager.removeView(draggedCard)
+                            windowManager.removeView(card)
+
+                            // Remove from active cards list (but keep in matchedCards)
+                            cards.remove(draggedCard)
+                            cards.remove(card)
+
+                            // Check if all pairs have been matched
+                            if (correctMatches.size == totalPairs * 2) {
+                                showGearPopup(gearsEarned)
+                                waitingForNextSet = true
+                            }
+                        } catch (e: Exception) {
+                            Log.e(serviceIdentifier, "Error removing matched cards", e)
+                        }
+                    }, 500) // Short delay to show the green color before disappearing
+
                 } else {
+                    // Show brief flash of red for incorrect match
                     draggedCard.setBackgroundColor(Color.RED)
                     card.setBackgroundColor(Color.RED)
                     Toast.makeText(this, "Incorrect Match", Toast.LENGTH_SHORT).show()
+
+                    // Reset colors after brief delay
+                    handler.postDelayed({
+                        draggedCard.setBackgroundColor(Color.DKGRAY)
+                        card.setBackgroundColor(Color.DKGRAY)
+                    }, 500)
                 }
                 break
             }
@@ -260,7 +364,7 @@ class VocabMatchService : Service() {
                 try {
                     windowManager.removeView(popup)
                 } catch (e: Exception) {
-                    Log.e("VocabMatchService", "Error removing popup", e)
+                    Log.e(serviceIdentifier, "Error removing popup", e)
                 }
             }
         }
@@ -282,7 +386,7 @@ class VocabMatchService : Service() {
         try {
             windowManager.addView(popup, params)
         } catch (e: Exception) {
-            Log.e("VocabMatchService", "Error showing popup", e)
+            Log.e(serviceIdentifier, "Error showing popup", e)
         }
     }
 
@@ -303,7 +407,7 @@ class VocabMatchService : Service() {
             windowManager.addView(view, params)
             cards.add(view)
         } catch (e: Exception) {
-            Log.e("VocabMatchService", "Error adding card", e)
+            Log.e(serviceIdentifier, "Error adding card", e)
         }
     }
 
@@ -312,15 +416,19 @@ class VocabMatchService : Service() {
             try {
                 windowManager.removeView(card)
             } catch (e: Exception) {
-                Log.e("VocabMatchService", "Error removing card", e)
+                Log.e(serviceIdentifier, "Error removing card", e)
             }
         }
         cards.clear()
+        matchedCards.clear()
+        waitingForNextSet = true
     }
 
     override fun onDestroy() {
         timer?.cancel()
         removeAllCards()
+        Log.d(serviceIdentifier, "Vocab Match Service destroyed")
         super.onDestroy()
+        vocabCoroutineJob?.cancel()
     }
 }

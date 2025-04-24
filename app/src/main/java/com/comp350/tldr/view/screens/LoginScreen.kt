@@ -11,24 +11,44 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.google.firebase.auth.FirebaseAuth
 import com.comp350.tldr.controller.navigation.NavigationController
+import com.comp350.tldr.controller.viewmodels.LoginViewModel
 import com.comp350.tldr.view.components.PixelBackground
 import com.comp350.tldr.view.theme.AppTheme
+import kotlinx.coroutines.launch
+import com.google.firebase.auth.FirebaseAuth
+
 
 @Composable
 fun LoginScreen(navController: NavController) {
-    val auth = FirebaseAuth.getInstance()
+    val context = LocalContext.current
+    val loginViewModel: LoginViewModel = viewModel()
     val navigationController = NavigationController(navController)
 
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
+    val email by loginViewModel.email.collectAsState()
+    val password by loginViewModel.password.collectAsState()
+    val errorMessage by loginViewModel.errorMessage.collectAsState()
+    val isLoading by loginViewModel.isLoading.collectAsState()
+    val savedEmails by loginViewModel.savedEmails.collectAsState()
+
+    // for forgot password
+    var showResetDialog by remember { mutableStateOf(false) }
+    var snackbarMessage by remember { mutableStateOf<String?>(null) }
+
+
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        loginViewModel.loadSavedEmails(context)
+        loginViewModel.updateEmail("") // optional: clear old email
+        loginViewModel.updatePassword("")
+    }
+
 
     PixelBackground {
         Column(
@@ -44,26 +64,30 @@ fun LoginScreen(navController: NavController) {
 
             EmailInputField(
                 email = email,
-                onEmailChange = { email = it }
+                onEmailChange = loginViewModel::updateEmail,
+                savedEmails = savedEmails
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             PasswordInputField(
                 password = password,
-                onPasswordChange = { password = it }
+                onPasswordChange = loginViewModel::updatePassword
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
             LoginButton(
                 isLoading = isLoading,
-                email = email,
-                password = password,
-                auth = auth,
-                navigationController = navigationController,
-                onLoadingChange = { isLoading = it },
-                onErrorMessageChange = { errorMessage = it }
+                onClick = {
+                    coroutineScope.launch {
+                        loginViewModel.login(context) { success ->
+                            if (success) {
+                                navigationController.navigateToMainMenu()
+                            }
+                        }
+                    }
+                }
             )
 
             ErrorMessageDisplay(errorMessage)
@@ -71,6 +95,48 @@ fun LoginScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(24.dp))
 
             SignupNavigationButton(navigationController)
+
+            TextButton(onClick = { showResetDialog = true }) {
+                TextButton(onClick = { showResetDialog = true }) {
+                    Text(
+                        "Forgot Password?",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontFamily = AppTheme.pixelFontFamily
+                    )
+                }
+
+            }
+
+            ForgotPasswordDialog(
+                showDialog = showResetDialog,
+                onDismiss = { showResetDialog = false },
+                onSendReset = { emailToReset ->
+                    FirebaseAuth.getInstance().sendPasswordResetEmail(emailToReset)
+                        .addOnCompleteListener { task ->
+                            snackbarMessage = if (task.isSuccessful) {
+                                "Password reset email sent"
+                            } else {
+                                task.exception?.message ?: "Failed to send reset email"
+                            }
+                        }
+                }
+            )
+
+            snackbarMessage?.let { message ->
+                Snackbar(
+                    action = {
+                        TextButton(onClick = { snackbarMessage = null }) {
+                            Text("Dismiss", color = Color.Yellow)
+                        }
+                    },
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(message)
+                }
+            }
+
+
         }
     }
 }
@@ -87,26 +153,72 @@ private fun LoginScreenTitle() {
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EmailInputField(
     email: String,
-    onEmailChange: (String) -> Unit
+    onEmailChange: (String) -> Unit,
+    savedEmails: List<String>
 ) {
-    TextField(
-        value = email,
-        onValueChange = onEmailChange,
-        label = { Text("Email", color = Color.Gray) },
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White,
-            focusedTextColor = Color.Black,
-            unfocusedTextColor = Color.Black
-        ),
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth()
-    )
-}
+    var expanded by rememberSaveable { mutableStateOf(false) }
 
+    val filteredEmails = remember(email, savedEmails) {
+        savedEmails.filter {
+            it.contains(email, ignoreCase = true) && it != email
+        }
+    }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded && filteredEmails.isNotEmpty(),
+        onExpandedChange = {
+            // Only toggle expanded state when clicking the dropdown icon
+            if (filteredEmails.isNotEmpty()) {
+                expanded = !expanded
+            }
+        }
+    ) {
+        TextField(
+            value = email,
+            onValueChange = {
+                onEmailChange(it)
+                // Keep menu open if we have suggestions
+                if (filteredEmails.isNotEmpty()) {
+                    expanded = true
+                }
+            },
+            label = { Text("Email", color = Color.Gray) },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth(),
+            singleLine = true,
+            shape = RoundedCornerShape(8.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedTextColor = Color.Black,
+                unfocusedTextColor = Color.Black
+            )
+        )
+
+        // Only show dropdown when we have suggestions
+        if (filteredEmails.isNotEmpty()) {
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                filteredEmails.forEach { suggestion ->
+                    DropdownMenuItem(
+                        text = { Text(suggestion) },
+                        onClick = {
+                            onEmailChange(suggestion)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
 @Composable
 private fun PasswordInputField(
     password: String,
@@ -131,33 +243,10 @@ private fun PasswordInputField(
 @Composable
 private fun LoginButton(
     isLoading: Boolean,
-    email: String,
-    password: String,
-    auth: FirebaseAuth,
-    navigationController: NavigationController,
-    onLoadingChange: (Boolean) -> Unit,
-    onErrorMessageChange: (String?) -> Unit
+    onClick: () -> Unit
 ) {
     Button(
-        onClick = {
-            if (email.isBlank() || password.isBlank()) {
-                onErrorMessageChange("All fields are required")
-                return@Button
-            }
-
-            onLoadingChange(true)
-            onErrorMessageChange(null)
-
-            auth.signInWithEmailAndPassword(email, password)
-                .addOnCompleteListener { task ->
-                    onLoadingChange(false)
-                    if (task.isSuccessful) {
-                        navigationController.navigateToMainMenu()
-                    } else {
-                        onErrorMessageChange(task.exception?.message)
-                    }
-                }
-        },
+        onClick = onClick,
         enabled = !isLoading,
         colors = ButtonDefaults.buttonColors(containerColor = AppTheme.blueButtonColor),
         modifier = Modifier
@@ -184,7 +273,7 @@ private fun ErrorMessageDisplay(errorMessage: String?) {
         Text(
             text = it,
             color = Color.Red,
-            fontSize = 20.sp,
+            fontSize = 16.sp,
             fontFamily = AppTheme.pixelFontFamily
         )
     }
@@ -201,8 +290,48 @@ private fun SignupNavigationButton(navigationController: NavigationController) {
             "Don't have an account? Sign up",
             color = Color.White,
             fontSize = 18.sp,
-            fontFamily = AppTheme.pixelFontFamily,
-            textDecoration = TextDecoration.Underline
+            fontFamily = AppTheme.pixelFontFamily
+        )
+    }
+}
+
+@Composable
+fun ForgotPasswordDialog(
+    showDialog: Boolean,
+    onDismiss: () -> Unit,
+    onSendReset: (String) -> Unit
+) {
+    var email by remember { mutableStateOf("") }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("Reset Password") },
+            text = {
+                Column {
+                    Text("Enter your email to receive a password reset link.")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        placeholder = { Text("Email") },
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onSendReset(email)
+                    onDismiss()
+                }) {
+                    Text("Send")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 }

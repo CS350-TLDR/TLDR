@@ -8,15 +8,20 @@ import android.graphics.Color as AndroidColor
 import android.graphics.PixelFormat
 import android.net.Uri
 import android.os.*
-import android.util.Log
 import android.view.*
 import android.widget.*
 import com.comp350.tldr.R
 import com.comp350.tldr.classicstuff.Question
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import java.util.*
 
-class PopQuizService : Service() {
+class PopupService : Service() {
     private val serviceIdentifier = "PopQuizService"
 
     private lateinit var windowManager: WindowManager
@@ -24,7 +29,8 @@ class PopQuizService : Service() {
     private var resultsView: View? = null
     private var videoView: View? = null
     private var timer: Timer? = null
-    private val flashcardViews = ArrayList<View>(3) // Fixed size of 5 flashcards
+    private val flashcardViews = ArrayList<View>(3)
+    private var popServiceCoroutineJob: Job? = null
 
     private lateinit var auth: FirebaseAuth
     private lateinit var sharedPrefs: android.content.SharedPreferences
@@ -68,56 +74,71 @@ class PopQuizService : Service() {
         when (intent.action) {
             "START_SERVICE" -> handleStart(intent)
             "STOP_SERVICE" -> stopSelf()
+            "SHOW_NOW" -> {
+                when (currentActivity) {
+                    "Trivia" -> showRandomQuiz()
+                    "Video" -> showVideoPopup()
+                    "Flashcards" -> displayAllFlashcards()
+                }
+            }
         }
 
         return START_NOT_STICKY
     }
-
+//vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+//private fun startPopupServiceScheduler() {
+//    // Cancel any existing job
+//    popServiceCoroutineJob?.cancel()
+//
+//    // Create a new job
+//    popServiceCoroutineJob = CoroutineScope(Dispatchers.Main).launch {
+//
+//
+//        while (isActive) {
+//
+//            delay(intervalMs) //Repeat at interval
+//        }
+//    }
+//}
+//==================================
     private fun handleStart(intent: Intent) {
         currentTopic = intent.getStringExtra("topic") ?: "Python"
         currentActivity = intent.getStringExtra("activity") ?: "Trivia"
         intervalMs = intent.getLongExtra("interval", 60000)
 
-        Log.d(serviceIdentifier, "Service started with activity: $currentActivity")
-
         // Cancel any existing timers
         timer?.cancel()
         timer = Timer()
 
-        // For all activities, start with a 10-second delay
+        //startPopupServiceScheduler()
+
         when (currentActivity) {
             "Flashcards" -> {
-                Log.d(serviceIdentifier, "Starting flashcard mode")
-                removeAllOverlays() // Clear any existing overlays
+                removeAllOverlays()
 
-                // Schedule initial display after 10 seconds
                 timer?.schedule(object : TimerTask() {
                     override fun run() {
                         Handler(Looper.getMainLooper()).post {
                             try {
                                 displayAllFlashcards()
                             } catch (e: Exception) {
-                                Log.e(serviceIdentifier, "Initial flashcard display error", e)
                             }
                         }
                     }
-                }, 10000) // 10 seconds initial delay
+                }, 0)
 
-                // Then schedule regular refreshes every 60 seconds
                 timer?.scheduleAtFixedRate(object : TimerTask() {
                     override fun run() {
                         Handler(Looper.getMainLooper()).post {
                             try {
                                 refreshAllFlashcards()
                             } catch (e: Exception) {
-                                Log.e(serviceIdentifier, "Flashcard refresh error", e)
                             }
                         }
                     }
-                }, 10000 + intervalMs, intervalMs) // Start after initial delay + interval
+                }, 10000 + intervalMs, intervalMs)
             }
-            else -> { // Trivia or Video
-                // First timer task with 10-second delay for initial display
+            else -> {
                 timer?.schedule(object : TimerTask() {
                     override fun run() {
                         Handler(Looper.getMainLooper()).post {
@@ -125,15 +146,15 @@ class PopQuizService : Service() {
                                 when (currentActivity) {
                                     "Trivia" -> showRandomQuiz()
                                     "Video" -> showVideoPopup()
+                                    "VocabMatch" -> {
+                                    }
                                 }
                             } catch (e: Exception) {
-                                Log.e(serviceIdentifier, "Initial display error", e)
                             }
                         }
                     }
-                }, 10000) // 10 seconds initial delay
+                }, 0)
 
-                // Then start the regular interval
                 timer?.scheduleAtFixedRate(object : TimerTask() {
                     override fun run() {
                         Handler(Looper.getMainLooper()).post {
@@ -141,67 +162,27 @@ class PopQuizService : Service() {
                                 when (currentActivity) {
                                     "Trivia" -> showRandomQuiz()
                                     "Video" -> showVideoPopup()
+                                    "VocabMatch" -> {
+                                    }
                                 }
                             } catch (e: Exception) {
-                                Log.e(serviceIdentifier, "Scheduler error", e)
                             }
                         }
                     }
-                }, 10000 + intervalMs, intervalMs) // Start after initial delay + interval
+                }, 0 + intervalMs, intervalMs)
             }
         }
     }
 
-    private fun startScheduler() {
-        timer?.cancel()
-        timer = Timer()
-        timer?.scheduleAtFixedRate(object : TimerTask() {
-            override fun run() {
-                Handler(Looper.getMainLooper()).post {
-                    try {
-                        when (currentActivity) {
-                            "Trivia" -> showRandomQuiz()
-                            "Video" -> showVideoPopup()
-                            "Flashcards" -> { /* Handled separately */ }
-                        }
-                    } catch (e: Exception) {
-                        Log.e(serviceIdentifier, "Scheduler error", e)
-                    }
-                }
-            }
-        }, intervalMs, intervalMs)
-    }
-
-    private fun startFlashcardRefreshTimer() {
-        timer?.cancel()
-        timer = Timer()
-        timer?.scheduleAtFixedRate(object : TimerTask() {
-            override fun run() {
-                Handler(Looper.getMainLooper()).post {
-                    try {
-                        refreshAllFlashcards()
-                    } catch (e: Exception) {
-                        Log.e(serviceIdentifier, "Flashcard refresh error", e)
-                    }
-                }
-            }
-        }, intervalMs, intervalMs)
-    }
-
     private fun displayAllFlashcards() {
-        // Clear existing flashcards
         removeAllFlashcards()
 
-        // Display 5 new flashcards in different positions
         val screenWidth = resources.displayMetrics.widthPixels
-        val screenHeight = resources.displayMetrics.heightPixels
 
-        // Create 5 flashcards with random questions at different positions
         for (i in 0 until 3) {
             val question = pythonQuestions.random()
             val card = createResizableFlashCardView(question)
 
-            // Calculate position based on index (staggered layout)
             val xPos = (screenWidth / 6) + (i * screenWidth / 12)
             val yPos = 100 + (i * 80)
 
@@ -211,16 +192,12 @@ class PopQuizService : Service() {
     }
 
     private fun refreshAllFlashcards() {
-        Log.d(serviceIdentifier, "Refreshing all flashcards")
-        // Store positions of current cards
         val positions = flashcardViews.map {
             val params = it.layoutParams as WindowManager.LayoutParams
             Pair(params.x, params.y)
         }
 
-        // Remove all existing cards
         removeAllFlashcards()
-
 
         for (i in 0 until 3) {
             val question = pythonQuestions.random()
@@ -232,9 +209,6 @@ class PopQuizService : Service() {
             addFlashcardOverlay(card, xPos, yPos)
             flashcardViews.add(card)
         }
-
-        // Show a toast to indicate refresh
-        Toast.makeText(this, "Flashcards refreshed!", Toast.LENGTH_SHORT).show()
     }
 
     private fun createResizableFlashCardView(question: Question): View {
@@ -243,17 +217,15 @@ class PopQuizService : Service() {
             setPadding(2, 2, 2, 2)
         }
 
-        // Create a container for the content
         val contentLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(AndroidColor.BLACK)
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT // Changed to WRAP_CONTENT
+                FrameLayout.LayoutParams.WRAP_CONTENT
             )
         }
 
-        // Add a small handle/title bar - JUST FOR DRAGGING
         val titleBar = TextView(this).apply {
             setBackgroundColor(AndroidColor.parseColor("blue"))
             setTextColor(AndroidColor.WHITE)
@@ -266,7 +238,6 @@ class PopQuizService : Service() {
             )
         }
 
-        // Instructions text
         val instructionsText = TextView(this).apply {
             text = "Tap card to flip"
             setTextColor(AndroidColor.LTGRAY)
@@ -278,7 +249,6 @@ class PopQuizService : Service() {
             )
         }
 
-        // Create card content views for front and back
         val cardFront = TextView(this).apply {
             text = question.text
             setTextColor(AndroidColor.WHITE)
@@ -304,22 +274,17 @@ class PopQuizService : Service() {
             )
         }
 
-        // Add views to content layout
         contentLayout.addView(titleBar)
         contentLayout.addView(instructionsText)
         contentLayout.addView(cardFront)
         contentLayout.addView(cardBack)
 
-        // Add content to main layout
         layout.addView(contentLayout)
 
-        // Add resize handles
         addResizeHandles(layout)
 
-        // Track touch events for dragging ONLY when touching the title bar
         titleBar.setOnTouchListener(createTouchListener(layout))
 
-        // Toggle front/back when clicking on the card content (but not title bar)
         val clickListener = View.OnClickListener {
             if (cardFront.visibility == View.VISIBLE) {
                 cardFront.visibility = View.GONE
@@ -330,7 +295,6 @@ class PopQuizService : Service() {
             }
         }
 
-        // Apply click listener to both front and back text views
         cardFront.setOnClickListener(clickListener)
         cardBack.setOnClickListener(clickListener)
 
@@ -338,7 +302,6 @@ class PopQuizService : Service() {
     }
 
     private fun addResizeHandles(layout: FrameLayout) {
-        // Bottom-right resize handle
         val resizeHandle = View(this).apply {
             setBackgroundColor(AndroidColor.parseColor("#4B89DC"))
             layoutParams = FrameLayout.LayoutParams(30, 30).apply {
@@ -348,7 +311,6 @@ class PopQuizService : Service() {
 
         layout.addView(resizeHandle)
 
-        // Set up touch listener for resizing
         resizeHandle.setOnTouchListener(createResizeListener(layout))
     }
 
@@ -359,12 +321,11 @@ class PopQuizService : Service() {
             private var initialHeight: Int = 0
             private var initialTouchX: Float = 0f
             private var initialTouchY: Float = 0f
-            private var aspectRatio: Float = 16f/9f  // Default 16:9 aspect ratio
+            private var aspectRatio: Float = 16f / 9f
 
             override fun onTouch(v: View, event: MotionEvent): Boolean {
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
-                        // Get initial dimensions
                         val params = view.layoutParams as WindowManager.LayoutParams
 
                         if (params.width == WindowManager.LayoutParams.WRAP_CONTENT) {
@@ -380,10 +341,8 @@ class PopQuizService : Service() {
                             initialHeight = params.height
                         }
 
-                        // Calculate aspect ratio from current dimensions
                         aspectRatio = initialWidth.toFloat() / initialHeight.toFloat()
 
-                        // Get initial touch position
                         initialTouchX = event.rawX
                         initialTouchY = event.rawY
                         return true
@@ -392,20 +351,15 @@ class PopQuizService : Service() {
                         try {
                             val params = view.layoutParams as WindowManager.LayoutParams
 
-                            // Use the horizontal drag to determine size
                             val deltaX = event.rawX - initialTouchX
 
-                            // Calculate new width based on drag
                             val newWidth = Math.max(400, initialWidth + deltaX.toInt())
 
-                            // Calculate height based on aspect ratio
                             val newHeight = (newWidth / aspectRatio).toInt()
 
-                            // Apply the new dimensions
                             params.width = newWidth
                             params.height = Math.max(300, newHeight)
 
-                            // Update view layout
                             windowManager.updateViewLayout(view, params)
                             return true
                         } catch (e: Exception) {
@@ -430,30 +384,24 @@ class PopQuizService : Service() {
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
                         try {
-                            // Get the initial position
                             val params = view.layoutParams as WindowManager.LayoutParams
                             initialX = params.x
                             initialY = params.y
-                            // Get the initial touch position
                             initialTouchX = event.rawX
                             initialTouchY = event.rawY
                             return true
                         } catch (e: Exception) {
-                            Log.e(serviceIdentifier, "Error in touch DOWN event", e)
                             return false
                         }
                     }
                     MotionEvent.ACTION_MOVE -> {
                         try {
-                            // Calculate the change in position
                             val params = view.layoutParams as WindowManager.LayoutParams
                             params.x = initialX + (event.rawX - initialTouchX).toInt()
                             params.y = initialY + (event.rawY - initialTouchY).toInt()
-                            // Update the view
                             windowManager.updateViewLayout(view, params)
                             return true
                         } catch (e: Exception) {
-                            Log.e(serviceIdentifier, "Error in touch MOVE event", e)
                             return false
                         }
                     }
@@ -468,7 +416,7 @@ class PopQuizService : Service() {
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, // Allow touches to pass through to windows behind
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
@@ -479,7 +427,6 @@ class PopQuizService : Service() {
         try {
             windowManager.addView(view, params)
         } catch (e: Exception) {
-            Log.e(serviceIdentifier, "Error adding flashcard window", e)
         }
     }
 
@@ -488,7 +435,6 @@ class PopQuizService : Service() {
             try {
                 windowManager.removeView(view)
             } catch (e: Exception) {
-                Log.e(serviceIdentifier, "Error removing flashcard view", e)
             }
         }
         flashcardViews.clear()
@@ -578,8 +524,6 @@ class PopQuizService : Service() {
                         saveGears()
                     }
                     showResult(correct, question.options[question.correctAnswerIndex])
-                } else {
-                    Toast.makeText(this@PopQuizService, "Please select an answer", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -647,10 +591,9 @@ class PopQuizService : Service() {
     private fun createVideoLayout(): View {
         val layout = FrameLayout(this).apply {
             setBackgroundColor(AndroidColor.parseColor("#333333"))
-            setPadding(4, 4, 4, 4) // Double the padding from 2 to 4
+            setPadding(4, 4, 4, 4)
         }
 
-        // Create inner container
         val contentLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(AndroidColor.BLACK)
@@ -660,7 +603,6 @@ class PopQuizService : Service() {
             )
         }
 
-        // Add the top bar - double the text size and padding
         val topBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(
@@ -672,17 +614,17 @@ class PopQuizService : Service() {
 
         val title = TextView(this).apply {
             setTextColor(AndroidColor.WHITE)
-            textSize = 32f // Double from 16f
+            textSize = 32f
             gravity = Gravity.CENTER_VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            setPadding(24, 16, 16, 16) // Double the padding
+            setPadding(24, 16, 16, 16)
         }
 
         val close = Button(this).apply {
             text = "X"
-            textSize = 24f // Double from 12f
-            minWidth = 60 // Double from 40
-            minHeight = 60 // Double from 40
+            textSize = 24f
+            minWidth = 60
+            minHeight = 60
             setTextColor(AndroidColor.WHITE)
             setBackgroundColor(AndroidColor.parseColor(blueColor))
             layoutParams = LinearLayout.LayoutParams(
@@ -706,11 +648,10 @@ class PopQuizService : Service() {
             }
         }
 
-
         videoViewComponent = video
 
         try {
-            val videoResIds = listOf(R.raw.pythonbasics, R.raw.oop_vs_functional, R.raw.oop_spongeb)
+            val videoResIds = listOf(R.raw.pythonbasics, R.raw.oop_vs_functional, R.raw. drake, R.raw.joeRogan)
             val randomVideoResId = videoResIds.random()
             val videoUri = Uri.parse("android.resource://$packageName/$randomVideoResId")
 
@@ -722,49 +663,41 @@ class PopQuizService : Service() {
             video.setOnCompletionListener {
                 gears++
                 saveGears()
-                Toast.makeText(this, "Video completed! (+1 Gear)", Toast.LENGTH_SHORT).show()
                 removeAllOverlays()
             }
 
             contentLayout.addView(video)
         } catch (e: Exception) {
-            Log.e(serviceIdentifier, "Video error", e)
         }
 
-        // Add content layout to the main frame
         layout.addView(contentLayout)
 
-        // Add resize handle - double its size
         val resizeHandle = View(this).apply {
             setBackgroundColor(AndroidColor.parseColor("#4B89DC"))
-            layoutParams = FrameLayout.LayoutParams(60, 60).apply { // Double from 30x30
+            layoutParams = FrameLayout.LayoutParams(60, 60).apply {
                 gravity = Gravity.BOTTOM or Gravity.END
             }
         }
 
         layout.addView(resizeHandle)
 
-        // Add the touch listeners
         topBar.setOnTouchListener(createTouchListener(layout))
         resizeHandle.setOnTouchListener(createResizeListener(layout))
 
         return layout
     }
 
-
     private fun showVideoPopup() {
         removeAllOverlays()
         videoView = createVideoLayout()
 
-        // Get screen dimensions to calculate half size
         val displayMetrics = resources.displayMetrics
         val screenWidth = displayMetrics.widthPixels
         val screenHeight = displayMetrics.heightPixels
 
-        // Set to half screen size as initial size
         val params = WindowManager.LayoutParams(
-            screenWidth / 2,  // Half width
-            screenHeight / 2, // Half height
+            screenWidth / 2,
+            screenHeight / 2,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
@@ -780,7 +713,6 @@ class PopQuizService : Service() {
             try {
                 videoViewComponent?.start()
             } catch (e: Exception) {
-
             }
         }, 500)
     }
@@ -793,13 +725,10 @@ class PopQuizService : Service() {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.CENTER  // Center it on screen
+            gravity = Gravity.CENTER
         }
         windowManager.addView(view, params)
     }
-
-
-
 
     private fun calculateAccuracy(): Int = if (totalAnswered == 0) 0 else (correctAnswers * 100) / totalAnswered
 
@@ -815,14 +744,11 @@ class PopQuizService : Service() {
         prefs.edit().putInt("gears", gears).apply()
     }
 
-
-
     private fun removeFloatingView() {
         floatingView?.let {
             try {
                 windowManager.removeView(it)
             } catch (e: Exception) {
-                Log.e(serviceIdentifier, "Error removing floating view", e)
             }
         }
         floatingView = null
@@ -833,7 +759,6 @@ class PopQuizService : Service() {
             try {
                 windowManager.removeView(it)
             } catch (e: Exception) {
-                Log.e(serviceIdentifier, "Error removing result view", e)
             }
         }
         resultsView = null
@@ -844,7 +769,6 @@ class PopQuizService : Service() {
             try {
                 windowManager.removeView(it)
             } catch (e: Exception) {
-                Log.e(serviceIdentifier, "Error removing video view", e)
             }
         }
         videoView = null
@@ -863,7 +787,6 @@ class PopQuizService : Service() {
         super.onDestroy()
     }
 
-    // Extension function to avoid null pointer exceptions
     private fun <T> List<T>.randomOrNull(): T? {
         return if (isEmpty()) null else random()
     }
