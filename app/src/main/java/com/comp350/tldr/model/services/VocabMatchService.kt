@@ -31,7 +31,7 @@ class VocabMatchService : Service() {
     private lateinit var windowManager: WindowManager
     private val cards = mutableListOf<View>()
     private val cardPairs = mutableMapOf<String, String>()
-    private var lessonCoroutineJob: Job? = null
+    private var vocabCoroutineJob: Job? = null
 
     private val sampleQuestions = listOf(
         "What are variables used for?" to "To store data",
@@ -69,6 +69,7 @@ class VocabMatchService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        Log.d(serviceIdentifier, "VocabMatchService created")
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
     }
 
@@ -102,7 +103,7 @@ class VocabMatchService : Service() {
         // Show cards immediately (without initial delay)
         handler.post { refreshCards() }
 
-        // Schedule regular refresh based on the interval
+
         startVocabScheduler()
 
 
@@ -123,10 +124,10 @@ class VocabMatchService : Service() {
 
 private fun startVocabScheduler() {
     // Cancel any existing job
-    lessonCoroutineJob?.cancel()
+    vocabCoroutineJob?.cancel()
 
     // Create a new job
-    lessonCoroutineJob = CoroutineScope(Dispatchers.Main).launch {
+    vocabCoroutineJob = CoroutineScope(Dispatchers.Main).launch {
         Toast.makeText(
             this@VocabMatchService,
             "Vocab Match Activated!",
@@ -310,7 +311,6 @@ private fun startVocabScheduler() {
                             // Check if all pairs have been matched
                             if (correctMatches.size == totalPairs * 2) {
                                 showGearPopup(gearsEarned)
-                                removeAllCards()
                                 waitingForNextSet = true
                             }
                         } catch (e: Exception) {
@@ -421,11 +421,14 @@ private fun startVocabScheduler() {
         }
         cards.clear()
         matchedCards.clear()
+        waitingForNextSet = true
     }
 
     override fun onDestroy() {
         timer?.cancel()
         removeAllCards()
+        Log.d(serviceIdentifier, "Vocab Match Service destroyed")
         super.onDestroy()
+        vocabCoroutineJob?.cancel()
     }
 }

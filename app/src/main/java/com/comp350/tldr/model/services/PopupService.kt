@@ -13,9 +13,15 @@ import android.widget.*
 import com.comp350.tldr.R
 import com.comp350.tldr.classicstuff.Question
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import java.util.*
 
-class PopQuizService : Service() {
+class PopupService : Service() {
     private val serviceIdentifier = "PopQuizService"
 
     private lateinit var windowManager: WindowManager
@@ -24,6 +30,7 @@ class PopQuizService : Service() {
     private var videoView: View? = null
     private var timer: Timer? = null
     private val flashcardViews = ArrayList<View>(3)
+    private var popServiceCoroutineJob: Job? = null
 
     private lateinit var auth: FirebaseAuth
     private lateinit var sharedPrefs: android.content.SharedPreferences
@@ -78,14 +85,32 @@ class PopQuizService : Service() {
 
         return START_NOT_STICKY
     }
-
+//vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+//private fun startPopupServiceScheduler() {
+//    // Cancel any existing job
+//    popServiceCoroutineJob?.cancel()
+//
+//    // Create a new job
+//    popServiceCoroutineJob = CoroutineScope(Dispatchers.Main).launch {
+//
+//
+//        while (isActive) {
+//
+//            delay(intervalMs) //Repeat at interval
+//        }
+//    }
+//}
+//==================================
     private fun handleStart(intent: Intent) {
         currentTopic = intent.getStringExtra("topic") ?: "Python"
         currentActivity = intent.getStringExtra("activity") ?: "Trivia"
         intervalMs = intent.getLongExtra("interval", 60000)
 
+        // Cancel any existing timers
         timer?.cancel()
         timer = Timer()
+
+        //startPopupServiceScheduler()
 
         when (currentActivity) {
             "Flashcards" -> {
@@ -149,58 +174,10 @@ class PopQuizService : Service() {
         }
     }
 
-    private fun formatIntervalForDisplay(intervalMs: Long): String {
-        return when (intervalMs) {
-            60000L -> "1 minute"
-            300000L -> "5 minutes"
-            600000L -> "10 minutes"
-            1800000L -> "30 minutes"
-            3600000L -> "1 hour"
-            7200000L -> "2 hours"
-            else -> "${intervalMs / 60000} minutes"
-        }
-    }
-
-    private fun startScheduler() {
-        timer?.cancel()
-        timer = Timer()
-        timer?.scheduleAtFixedRate(object : TimerTask() {
-            override fun run() {
-                Handler(Looper.getMainLooper()).post {
-                    try {
-                        when (currentActivity) {
-                            "Trivia" -> showRandomQuiz()
-                            "Video" -> showVideoPopup()
-                            "Flashcards" -> {
-                            }
-                        }
-                    } catch (e: Exception) {
-                    }
-                }
-            }
-        }, intervalMs, intervalMs)
-    }
-
-    private fun startFlashcardRefreshTimer() {
-        timer?.cancel()
-        timer = Timer()
-        timer?.scheduleAtFixedRate(object : TimerTask() {
-            override fun run() {
-                Handler(Looper.getMainLooper()).post {
-                    try {
-                        refreshAllFlashcards()
-                    } catch (e: Exception) {
-                    }
-                }
-            }
-        }, intervalMs, intervalMs)
-    }
-
     private fun displayAllFlashcards() {
         removeAllFlashcards()
 
         val screenWidth = resources.displayMetrics.widthPixels
-        val screenHeight = resources.displayMetrics.heightPixels
 
         for (i in 0 until 3) {
             val question = pythonQuestions.random()

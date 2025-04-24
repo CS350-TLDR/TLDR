@@ -3,7 +3,7 @@ package com.comp350.tldr.controllers
 import android.content.Context
 import android.content.Intent
 import com.comp350.tldr.models.Question
-import com.comp350.tldr.model.services.PopQuizService
+import com.comp350.tldr.model.services.PopupService
 
 class QuizController(private val context: Context) {
     private val userController = UserController(context)
@@ -656,7 +656,7 @@ class QuizController(private val context: Context) {
 
 
     fun startPopupService(topic: String, activity: String, intervalMs: Long, testMode: Boolean = false) {
-        val intent = Intent(context, PopQuizService::class.java).apply {
+        val intent = Intent(context, PopupService::class.java).apply {
             putExtra("topic", topic)
             putExtra("activity", activity)
             putExtra("interval", intervalMs)
@@ -667,7 +667,7 @@ class QuizController(private val context: Context) {
     }
 
     fun stopPopupService() {
-        val intent = Intent(context, PopQuizService::class.java).apply {
+        val intent = Intent(context, PopupService::class.java).apply {
             action = "STOP_SERVICE"
         }
         context.startService(intent)
