@@ -30,9 +30,9 @@
             </intent-filter>
         </activity>
 
-        <!-- Pop Quiz Service -->
+        <!-- Pop Up Service -->
         <service
-            android:name=".model.services.PopQuizService"
+            android:name=".model.services.PopupService"
             android:enabled="true"
             android:exported="false" />
 
