@@ -1,0 +1,377 @@
+package com.comp350.tldr.model.services
+
+import android.annotation.SuppressLint
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.graphics.Color
+import android.os.*
+import android.view.*
+import android.widget.*
+import android.graphics.PixelFormat
+import com.comp350.tldr.classicstuff.Question
+import com.google.firebase.auth.FirebaseAuth
+import java.util.*
+
+class FlashcardService : Service() {
+    private val serviceIdentifier = "FlashcardService"
+    private lateinit var windowManager: WindowManager
+    private val flashcardViews = ArrayList<View>(3)
+    private var timer: Timer? = null
+
+    private lateinit var auth: FirebaseAuth
+    private lateinit var sharedPrefs: android.content.SharedPreferences
+
+    private var intervalMs: Long = 60000
+    private var gears = 0
+
+    private val pythonQuestions = listOf(
+        Question("What are variables used for?", listOf("To store data", "To print messages", "To create loops", "To define classes"), 0),
+        Question("What is the correct form to name a variable with multiple words?", listOf("snake_case", "PascalCase", "camelCase", "UPPER_CASE"), 0),
+        Question("Which statement correctly creates a variable x with value 5?", listOf("x = 5", "int x = 5", "var x = 5", "define x = 5"), 0),
+        Question("What is the output of print(type(10))?", listOf("<class 'int'>", "<class 'str'>", "<class 'float'>", "<class 'number'>"), 0),
+        Question("What is a function in Python?", listOf("A reusable block of code", "A variable type", "A loop construct", "A special character"), 0),
+        Question("How do you create a list in Python?", listOf("my_list = [1, 2, 3]", "my_list = (1, 2, 3)", "my_list = {1, 2, 3}", "my_list = <1, 2, 3>"), 0),
+        Question("What does the len() function do?", listOf("Returns the length of an object", "Returns the largest value", "Formats a string", "Creates a new line"), 0),
+        Question("How do you add an element to a list?", listOf("my_list.append(element)", "my_list.add(element)", "my_list.insert(element)", "my_list.push(element)"), 0),
+        Question("What symbol is used for comments in Python?", listOf("#", "//", "/*", "<!-->"), 0),
+        Question("Which data type is immutable?", listOf("Tuple", "List", "Dictionary", "Set"), 0)
+    )
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        auth = FirebaseAuth.getInstance()
+        sharedPrefs = getSharedPreferences("tldr_prefs", Context.MODE_PRIVATE)
+        loadGears()
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        intent ?: return START_NOT_STICKY
+
+        when (intent.action) {
+            "START_SERVICE" -> handleStart(intent)
+            "STOP_SERVICE" -> stopSelf()
+            "SHOW_NOW" -> displayAllFlashcards()
+        }
+
+        return START_NOT_STICKY
+    }
+
+    private fun handleStart(intent: Intent) {
+        intervalMs = intent.getLongExtra("interval", 60000)
+
+        timer?.cancel()
+        timer = Timer()
+
+        removeAllFlashcards()
+
+        timer?.schedule(object : TimerTask() {
+            override fun run() {
+                Handler(Looper.getMainLooper()).post {
+                    try {
+                        displayAllFlashcards()
+                    } catch (e: Exception) {
+                    }
+                }
+            }
+        }, 0)
+
+        timer?.scheduleAtFixedRate(object : TimerTask() {
+            override fun run() {
+                Handler(Looper.getMainLooper()).post {
+                    try {
+                        refreshAllFlashcards()
+                    } catch (e: Exception) {
+                    }
+                }
+            }
+        }, 10000 + intervalMs, intervalMs)
+    }
+
+    private fun displayAllFlashcards() {
+        removeAllFlashcards()
+
+        val screenWidth = resources.displayMetrics.widthPixels
+
+        for (i in 0 until 3) {
+            val question = pythonQuestions.random()
+            val card = createResizableFlashCardView(question)
+
+            val xPos = (screenWidth / 6) + (i * screenWidth / 12)
+            val yPos = 100 + (i * 80)
+
+            addFlashcardOverlay(card, xPos, yPos)
+            flashcardViews.add(card)
+        }
+    }
+
+    private fun refreshAllFlashcards() {
+        val positions = flashcardViews.map {
+            val params = it.layoutParams as WindowManager.LayoutParams
+            Pair(params.x, params.y)
+        }
+
+        removeAllFlashcards()
+
+        for (i in 0 until 3) {
+            val question = pythonQuestions.random()
+            val card = createResizableFlashCardView(question)
+
+            val xPos = if (i < positions.size) positions[i].first else 100 + (i * 50)
+            val yPos = if (i < positions.size) positions[i].second else 100 + (i * 80)
+
+            addFlashcardOverlay(card, xPos, yPos)
+            flashcardViews.add(card)
+        }
+    }
+
+    private fun createResizableFlashCardView(question: Question): View {
+        val layout = FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor("#333333"))
+            setPadding(2, 2, 2, 2)
+        }
+
+        val contentLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.BLACK)
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        val titleBar = TextView(this).apply {
+            setBackgroundColor(Color.parseColor("blue"))
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            textSize = 12f
+            setPadding(8, 4, 8, 4)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        val instructionsText = TextView(this).apply {
+            text = "Tap card to flip"
+            setTextColor(Color.LTGRAY)
+            textSize = 10f
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        val cardFront = TextView(this).apply {
+            text = question.text
+            setTextColor(Color.WHITE)
+            textSize = 18f
+            setPadding(16, 16, 16, 16)
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        val cardBack = TextView(this).apply {
+            text = "Answer: ${question.options[question.correctAnswerIndex]}"
+            setTextColor(Color.YELLOW)
+            textSize = 18f
+            setPadding(16, 16, 16, 16)
+            gravity = Gravity.CENTER
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        contentLayout.addView(titleBar)
+        contentLayout.addView(instructionsText)
+        contentLayout.addView(cardFront)
+        contentLayout.addView(cardBack)
+
+        layout.addView(contentLayout)
+
+        addResizeHandles(layout)
+
+        titleBar.setOnTouchListener(createTouchListener(layout))
+
+        val clickListener = View.OnClickListener {
+            if (cardFront.visibility == View.VISIBLE) {
+                cardFront.visibility = View.GONE
+                cardBack.visibility = View.VISIBLE
+            } else {
+                cardFront.visibility = View.VISIBLE
+                cardBack.visibility = View.GONE
+            }
+        }
+
+        cardFront.setOnClickListener(clickListener)
+        cardBack.setOnClickListener(clickListener)
+
+        return layout
+    }
+
+    private fun addResizeHandles(layout: FrameLayout) {
+        val resizeHandle = View(this).apply {
+            setBackgroundColor(Color.parseColor("#4B89DC"))
+            layoutParams = FrameLayout.LayoutParams(30, 30).apply {
+                gravity = Gravity.BOTTOM or Gravity.END
+            }
+        }
+
+        layout.addView(resizeHandle)
+
+        resizeHandle.setOnTouchListener(createResizeListener(layout))
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun createResizeListener(view: View): View.OnTouchListener {
+        return object : View.OnTouchListener {
+            private var initialWidth: Int = 0
+            private var initialHeight: Int = 0
+            private var initialTouchX: Float = 0f
+            private var initialTouchY: Float = 0f
+            private var aspectRatio: Float = 16f / 9f
+
+            override fun onTouch(v: View, event: MotionEvent): Boolean {
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        val params = view.layoutParams as WindowManager.LayoutParams
+
+                        if (params.width == WindowManager.LayoutParams.WRAP_CONTENT) {
+                            view.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+                            initialWidth = view.measuredWidth
+                            initialHeight = view.measuredHeight
+
+                            params.width = initialWidth
+                            params.height = initialHeight
+                            windowManager.updateViewLayout(view, params)
+                        } else {
+                            initialWidth = params.width
+                            initialHeight = params.height
+                        }
+
+                        aspectRatio = initialWidth.toFloat() / initialHeight.toFloat()
+
+                        initialTouchX = event.rawX
+                        initialTouchY = event.rawY
+                        return true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        try {
+                            val params = view.layoutParams as WindowManager.LayoutParams
+
+                            val deltaX = event.rawX - initialTouchX
+
+                            val newWidth = Math.max(400, initialWidth + deltaX.toInt())
+
+                            val newHeight = (newWidth / aspectRatio).toInt()
+
+                            params.width = newWidth
+                            params.height = Math.max(300, newHeight)
+
+                            windowManager.updateViewLayout(view, params)
+                            return true
+                        } catch (e: Exception) {
+                            return false
+                        }
+                    }
+                }
+                return false
+            }
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun createTouchListener(view: View): View.OnTouchListener {
+        return object : View.OnTouchListener {
+            private var initialX: Int = 0
+            private var initialY: Int = 0
+            private var initialTouchX: Float = 0f
+            private var initialTouchY: Float = 0f
+
+            override fun onTouch(v: View, event: MotionEvent): Boolean {
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        try {
+                            val params = view.layoutParams as WindowManager.LayoutParams
+                            initialX = params.x
+                            initialY = params.y
+                            initialTouchX = event.rawX
+                            initialTouchY = event.rawY
+                            return true
+                        } catch (e: Exception) {
+                            return false
+                        }
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        try {
+                            val params = view.layoutParams as WindowManager.LayoutParams
+                            params.x = initialX + (event.rawX - initialTouchX).toInt()
+                            params.y = initialY + (event.rawY - initialTouchY).toInt()
+                            windowManager.updateViewLayout(view, params)
+                            return true
+                        } catch (e: Exception) {
+                            return false
+                        }
+                    }
+                }
+                return false
+            }
+        }
+    }
+
+    private fun addFlashcardOverlay(view: View, xOffset: Int, yOffset: Int) {
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = xOffset
+            y = yOffset
+        }
+
+        try {
+            windowManager.addView(view, params)
+        } catch (e: Exception) {
+        }
+    }
+
+    private fun removeAllFlashcards() {
+        for (view in flashcardViews) {
+            try {
+                windowManager.removeView(view)
+            } catch (e: Exception) {
+            }
+        }
+        flashcardViews.clear()
+    }
+
+    private fun loadGears() {
+        val userId = auth.currentUser?.uid
+        val prefs = if (userId != null) getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE) else sharedPrefs
+        gears = prefs.getInt("gears", 0)
+    }
+
+    private fun saveGears() {
+        val userId = auth.currentUser?.uid
+        val prefs = if (userId != null) getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE) else sharedPrefs
+        prefs.edit().putInt("gears", gears).apply()
+    }
+
+    override fun onDestroy() {
+        timer?.cancel()
+        removeAllFlashcards()
+        super.onDestroy()
+    }
+}

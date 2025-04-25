@@ -118,6 +118,7 @@ class MainMenuViewModel : ViewModel() {
                 quiz.stopPopupService()
             }
         }
+
         Handler().postDelayed({
             if (enabled) {
                 when (_activity.value) {
@@ -138,7 +139,6 @@ class MainMenuViewModel : ViewModel() {
             _popupEnabled.value = enabled
         }, 100)
     }
-
     private fun getIntervalMillis(interval: String): Long {
         return when (interval) {
             "1m" -> 60000L

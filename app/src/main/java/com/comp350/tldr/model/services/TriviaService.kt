@@ -1,0 +1,305 @@
+package com.comp350.tldr.model.services
+
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.graphics.Color
+import android.graphics.PixelFormat
+import android.os.*
+import android.view.*
+import android.widget.*
+import com.comp350.tldr.classicstuff.Question
+import com.google.firebase.auth.FirebaseAuth
+import java.util.*
+
+class TriviaService : Service() {
+    private val serviceIdentifier = "TriviaService"
+    private lateinit var windowManager: WindowManager
+    private var floatingView: View? = null
+    private var resultsView: View? = null
+    private var timer: Timer? = null
+
+    private lateinit var auth: FirebaseAuth
+    private lateinit var sharedPrefs: android.content.SharedPreferences
+
+    private var intervalMs: Long = 60000
+    private var gears = 0
+    private var correctAnswers = 0
+    private var totalAnswered = 0
+
+    private val darkBlueColor = "#1A237E"
+    private val blueColor = "#2196F3"
+
+    private val pythonQuestions = listOf(
+        Question("What are variables used for?", listOf("To store data", "To print messages", "To create loops", "To define classes"), 0),
+        Question("What is the correct form to name a variable with multiple words?", listOf("snake_case", "PascalCase", "camelCase", "UPPER_CASE"), 0),
+        Question("Which statement correctly creates a variable x with value 5?", listOf("x = 5", "int x = 5", "var x = 5", "define x = 5"), 0),
+        Question("What is the output of print(type(10))?", listOf("<class 'int'>", "<class 'str'>", "<class 'float'>", "<class 'number'>"), 0),
+        Question("What is a function in Python?", listOf("A reusable block of code", "A variable type", "A loop construct", "A special character"), 0),
+        Question("How do you create a list in Python?", listOf("my_list = [1, 2, 3]", "my_list = (1, 2, 3)", "my_list = {1, 2, 3}", "my_list = <1, 2, 3>"), 0),
+        Question("What does the len() function do?", listOf("Returns the length of an object", "Returns the largest value", "Formats a string", "Creates a new line"), 0),
+        Question("How do you add an element to a list?", listOf("my_list.append(element)", "my_list.add(element)", "my_list.insert(element)", "my_list.push(element)"), 0),
+        Question("What symbol is used for comments in Python?", listOf("#", "//", "/*", "<!-->"), 0),
+        Question("Which data type is immutable?", listOf("Tuple", "List", "Dictionary", "Set"), 0)
+    )
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        auth = FirebaseAuth.getInstance()
+        sharedPrefs = getSharedPreferences("tldr_prefs", Context.MODE_PRIVATE)
+        loadGears()
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        intent ?: return START_NOT_STICKY
+
+        when (intent.action) {
+            "START_SERVICE" -> handleStart(intent)
+            "STOP_SERVICE" -> stopSelf()
+            "SHOW_NOW" -> showRandomQuiz()
+        }
+
+        return START_NOT_STICKY
+    }
+
+    private fun handleStart(intent: Intent) {
+        intervalMs = intent.getLongExtra("interval", 60000)
+
+        timer?.cancel()
+        timer = Timer()
+
+        timer?.schedule(object : TimerTask() {
+            override fun run() {
+                Handler(Looper.getMainLooper()).post {
+                    try {
+                        showRandomQuiz()
+                    } catch (e: Exception) {
+                    }
+                }
+            }
+        }, 0)
+
+        timer?.scheduleAtFixedRate(object : TimerTask() {
+            override fun run() {
+                Handler(Looper.getMainLooper()).post {
+                    try {
+                        showRandomQuiz()
+                    } catch (e: Exception) {
+                    }
+                }
+            }
+        }, intervalMs, intervalMs)
+    }
+
+    private fun showRandomQuiz() {
+        val question = pythonQuestions.randomOrNull() ?: return
+        removeAllViews()
+        floatingView = createQuizView(question)
+        addOverlay(floatingView!!)
+    }
+
+    private fun createQuizView(question: Question): View {
+        val layout = createBaseLayout()
+
+        layout.addView(createStatsBar())
+        layout.addView(createQuestionText(question.text))
+
+        val radioGroup = createAnswerOptions(question.options)
+        layout.addView(radioGroup)
+
+        layout.addView(createQuizButtons(radioGroup, question))
+
+        return layout
+    }
+
+    private fun createBaseLayout(): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setBackgroundColor(Color.BLACK)
+        setPadding(24, 24, 24, 24)
+    }
+
+    private fun createStatsBar(): TextView = TextView(this).apply {
+        text = "Accuracy: ${calculateAccuracy()}% | Gears: $gears"
+        setTextColor(Color.WHITE)
+        textSize = 16f
+        setPadding(0, 0, 0, 16)
+    }
+
+    private fun createQuestionText(text: String): TextView = TextView(this).apply {
+        this.text = text
+        setTextColor(Color.WHITE)
+        textSize = 18f
+        setPadding(0, 16, 0, 24)
+    }
+
+    private fun createAnswerOptions(options: List<String>): RadioGroup {
+        val group = RadioGroup(this).apply {
+            orientation = RadioGroup.VERTICAL
+            setPadding(0, 0, 0, 24)
+        }
+
+        options.forEachIndexed { index, option ->
+            val button = RadioButton(this).apply {
+                id = index
+                text = option
+                textSize = 16f
+                setTextColor(Color.WHITE)
+                setPadding(0, 8, 0, 8)
+            }
+            group.addView(button)
+        }
+
+        return group
+    }
+
+    private fun createQuizButtons(group: RadioGroup, question: Question): LinearLayout {
+        val buttonLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+
+        val submit = Button(this).apply {
+            text = "Submit"
+            setBackgroundColor(Color.parseColor(darkBlueColor))
+            setTextColor(Color.WHITE)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginEnd = 8
+            }
+            setOnClickListener {
+                val selectedId = group.checkedRadioButtonId
+                if (selectedId != -1) {
+                    totalAnswered++
+                    val correct = selectedId == question.correctAnswerIndex
+                    if (correct) {
+                        correctAnswers++
+                        gears++
+                        saveGears()
+                    }
+                    showResult(correct, question.options[question.correctAnswerIndex])
+                }
+            }
+        }
+
+        val close = Button(this).apply {
+            text = "Close"
+            setBackgroundColor(Color.parseColor(blueColor))
+            setTextColor(Color.WHITE)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = 8
+            }
+            setOnClickListener { removeAllViews() }
+        }
+
+        buttonLayout.addView(submit)
+        buttonLayout.addView(close)
+        return buttonLayout
+    }
+
+    private fun showResult(isCorrect: Boolean, correctAnswer: String) {
+        removeFloatingView()
+        resultsView = createResultView(isCorrect, correctAnswer)
+        addOverlay(resultsView!!)
+
+        Handler(Looper.getMainLooper()).postDelayed({ removeResultView() }, 5000)
+    }
+
+    private fun createResultView(isCorrect: Boolean, correctAnswer: String): View {
+        val layout = createBaseLayout()
+
+        layout.addView(createStatsBar())
+
+        val resultText = TextView(this).apply {
+            text = if (isCorrect) "Correct! (+1 Gear)" else "Wrong!"
+            setTextColor(Color.parseColor(if (isCorrect) "#4CAF50" else "#F44336"))
+            textSize = 24f
+            gravity = Gravity.CENTER
+            setPadding(0, 16, 0, 24)
+        }
+
+        val answerText = TextView(this).apply {
+            text = "The correct answer is: $correctAnswer"
+            setTextColor(Color.WHITE)
+            textSize = 18f
+            setPadding(0, 8, 0, 32)
+        }
+
+        val continueButton = Button(this).apply {
+            text = "Continue"
+            setBackgroundColor(Color.parseColor(blueColor))
+            setTextColor(Color.WHITE)
+            setOnClickListener { removeResultView() }
+        }
+
+        layout.apply {
+            addView(resultText)
+            addView(answerText)
+            addView(continueButton)
+        }
+
+        return layout
+    }
+
+    private fun addOverlay(view: View) {
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.CENTER
+        }
+        windowManager.addView(view, params)
+    }
+
+    private fun calculateAccuracy(): Int = if (totalAnswered == 0) 0 else (correctAnswers * 100) / totalAnswered
+
+    private fun loadGears() {
+        val userId = auth.currentUser?.uid
+        val prefs = if (userId != null) getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE) else sharedPrefs
+        gears = prefs.getInt("gears", 0)
+    }
+
+    private fun saveGears() {
+        val userId = auth.currentUser?.uid
+        val prefs = if (userId != null) getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE) else sharedPrefs
+        prefs.edit().putInt("gears", gears).apply()
+    }
+
+    private fun removeFloatingView() {
+        floatingView?.let {
+            try {
+                windowManager.removeView(it)
+            } catch (e: Exception) {
+            }
+        }
+        floatingView = null
+    }
+
+    private fun removeResultView() {
+        resultsView?.let {
+            try {
+                windowManager.removeView(it)
+            } catch (e: Exception) {
+            }
+        }
+        resultsView = null
+    }
+
+    private fun removeAllViews() {
+        removeFloatingView()
+        removeResultView()
+    }
+
+    override fun onDestroy() {
+        timer?.cancel()
+        removeAllViews()
+        super.onDestroy()
+    }
+
+    private fun <T> List<T>.randomOrNull(): T? {
+        return if (isEmpty()) null else random()
+    }
+}

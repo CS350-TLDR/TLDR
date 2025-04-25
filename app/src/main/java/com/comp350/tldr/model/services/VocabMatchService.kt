@@ -4,6 +4,7 @@ import android.app.Service
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Typeface
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -32,6 +33,7 @@ class VocabMatchService : Service() {
     private val cards = mutableListOf<View>()
     private val cardPairs = mutableMapOf<String, String>()
     private var vocabCoroutineJob: Job? = null
+    private var pixelFont: Typeface? = null
 
     private val sampleQuestions = listOf(
         "What are variables used for?" to "To store data",
@@ -58,7 +60,7 @@ class VocabMatchService : Service() {
 
     private val correctMatches = mutableSetOf<String>()
     private val matchedCards = mutableSetOf<View>()
-    private var intervalMs: Long = 60000L // Default 60 seconds
+    private var intervalMs: Long = 60000L
     private var timer: Timer? = null
     private var waitingForNextSet = false
     private val handler = Handler(Looper.getMainLooper())
@@ -71,6 +73,13 @@ class VocabMatchService : Service() {
         super.onCreate()
         Log.d(serviceIdentifier, "VocabMatchService created")
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+
+        try {
+            pixelFont = resources.getFont(resources.getIdentifier("rainyhearts", "font", packageName))
+            Log.d(serviceIdentifier, "Pixel font loaded successfully")
+        } catch (e: Exception) {
+            Log.e(serviceIdentifier, "Failed to load pixel font", e)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -80,7 +89,6 @@ class VocabMatchService : Service() {
             "START_SERVICE" -> handleStart(intent)
             "STOP_SERVICE" -> stopSelf()
             "SHOW_NOW" -> {
-                // Immediately show cards for testing purposes
                 Log.d(serviceIdentifier, "SHOW_NOW action received - showing cards immediately")
                 Toast.makeText(this, "Showing VocabMatch cards now", Toast.LENGTH_SHORT).show()
                 refreshCards()
@@ -91,25 +99,13 @@ class VocabMatchService : Service() {
     }
 
     private fun handleStart(intent: Intent) {
-        // Get interval from intent (with default value)
         intervalMs = intent.getLongExtra("interval", 60000L)
-
-
-
-        // Cancel any existing timers
         timer?.cancel()
         timer = Timer()
-
-        // Show cards immediately (without initial delay)
         handler.post { refreshCards() }
-
-
         startVocabScheduler()
-
-
     }
 
-    // Format interval for display
     private fun formatIntervalForDisplay(intervalMs: Long): String {
         return when (intervalMs) {
             60000L -> "1 minute"
@@ -122,28 +118,24 @@ class VocabMatchService : Service() {
         }
     }
 
-private fun startVocabScheduler() {
-    // Cancel any existing job
-    vocabCoroutineJob?.cancel()
+    private fun startVocabScheduler() {
+        vocabCoroutineJob?.cancel()
+        vocabCoroutineJob = CoroutineScope(Dispatchers.Main).launch {
+            Toast.makeText(
+                this@VocabMatchService,
+                "Vocab Match Activated!",
+                Toast.LENGTH_SHORT
+            ).show()
 
-    // Create a new job
-    vocabCoroutineJob = CoroutineScope(Dispatchers.Main).launch {
-        Toast.makeText(
-            this@VocabMatchService,
-            "Vocab Match Activated!",
-            Toast.LENGTH_SHORT
-        ).show()
-
-        while (isActive) {
-            if (waitingForNextSet) {
-                refreshCards()
-                waitingForNextSet = false
+            while (isActive) {
+                if (waitingForNextSet) {
+                    refreshCards()
+                    waitingForNextSet = false
+                }
+                delay(intervalMs)
             }
-            delay(intervalMs) //Repeat at interval
         }
-
     }
-}
 
     private fun refreshCards() {
         removeAllCards()
@@ -178,6 +170,10 @@ private fun startVocabScheduler() {
             text = "Clear"
             textSize = 8f
             setPadding(8, 4, 8, 4)
+
+            // Apply pixel font if available
+            pixelFont?.let { typeface = it }
+
             setOnClickListener {
                 removeAllCards()
                 Toast.makeText(this@VocabMatchService, "Cards cleared", Toast.LENGTH_SHORT).show()
@@ -205,10 +201,16 @@ private fun startVocabScheduler() {
     }
 
     private fun createCard(label: String): View {
-        val layout = FrameLayout(this).apply {
-            setBackgroundColor(Color.DKGRAY)
-            setPadding(8, 8, 8, 8)
+        val outerFrame = FrameLayout(this).apply {
+            setBackgroundColor(Color.BLACK)
+            setPadding(6, 6, 6, 6)
             tag = label
+        }
+
+        val innerFrame = FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor("#4B89DC"))
+            setPadding(8, 8, 8, 8)
+            id = 1001 // Give it an ID so we can find it later
         }
 
         val textView = TextView(this).apply {
@@ -216,19 +218,14 @@ private fun startVocabScheduler() {
             setTextColor(Color.WHITE)
             textSize = 16f
             setPadding(24, 24, 24, 24)
+            gravity = Gravity.CENTER
+
+            // Apply pixel font if available
+            pixelFont?.let { typeface = it }
         }
 
-        val helperText = TextView(this).apply {
-            text = "Drag to match"
-            setTextColor(Color.LTGRAY)
-            textSize = 12f
-            setPadding(24, 0, 24, 8)
-        }
-
-        val container = FrameLayout(this)
-        container.addView(helperText)
-        container.addView(textView)
-        layout.addView(container)
+        innerFrame.addView(textView)
+        outerFrame.addView(innerFrame)
 
         val touchListener = object : View.OnTouchListener {
             private var initialX = 0
@@ -237,7 +234,6 @@ private fun startVocabScheduler() {
             private var initialTouchY = 0f
 
             override fun onTouch(v: View, event: MotionEvent): Boolean {
-                // Skip processing for matched cards
                 if (matchedCards.contains(v)) {
                     return false
                 }
@@ -266,8 +262,8 @@ private fun startVocabScheduler() {
             }
         }
 
-        layout.setOnTouchListener(touchListener)
-        return layout
+        outerFrame.setOnTouchListener(touchListener)
+        return outerFrame
     }
 
     private fun checkForMatch(draggedCard: View) {
@@ -284,31 +280,27 @@ private fun startVocabScheduler() {
                 val isMatch = cardPairs[draggedText] == targetText || cardPairs[targetText] == draggedText
 
                 if (isMatch) {
-                    // Add both cards to matched sets
                     correctMatches.add(draggedText)
                     correctMatches.add(targetText)
                     matchedCards.add(draggedCard)
                     matchedCards.add(card)
                     gearsEarned++
 
-                    // Show brief flash of green to indicate match
-                    draggedCard.setBackgroundColor(Color.GREEN)
-                    card.setBackgroundColor(Color.GREEN)
+                    val draggedInnerFrame = draggedCard.findViewById<FrameLayout>(1001)
+                    val targetInnerFrame = card.findViewById<FrameLayout>(1001)
+
+                    draggedInnerFrame?.setBackgroundColor(Color.GREEN)
+                    targetInnerFrame?.setBackgroundColor(Color.GREEN)
 
                     Toast.makeText(this, "Correct Match! (+1 Gear)", Toast.LENGTH_SHORT).show()
 
-                    // Fade out and remove matched cards
                     handler.postDelayed({
                         try {
-                            // Remove the cards from window manager
                             windowManager.removeView(draggedCard)
                             windowManager.removeView(card)
-
-                            // Remove from active cards list (but keep in matchedCards)
                             cards.remove(draggedCard)
                             cards.remove(card)
 
-                            // Check if all pairs have been matched
                             if (correctMatches.size == totalPairs * 2) {
                                 showGearPopup(gearsEarned)
                                 waitingForNextSet = true
@@ -316,18 +308,20 @@ private fun startVocabScheduler() {
                         } catch (e: Exception) {
                             Log.e(serviceIdentifier, "Error removing matched cards", e)
                         }
-                    }, 500) // Short delay to show the green color before disappearing
+                    }, 500)
 
                 } else {
-                    // Show brief flash of red for incorrect match
-                    draggedCard.setBackgroundColor(Color.RED)
-                    card.setBackgroundColor(Color.RED)
+                    val draggedInnerFrame = draggedCard.findViewById<FrameLayout>(1001)
+                    val targetInnerFrame = card.findViewById<FrameLayout>(1001)
+
+                    draggedInnerFrame?.setBackgroundColor(Color.RED)
+                    targetInnerFrame?.setBackgroundColor(Color.RED)
+
                     Toast.makeText(this, "Incorrect Match", Toast.LENGTH_SHORT).show()
 
-                    // Reset colors after brief delay
                     handler.postDelayed({
-                        draggedCard.setBackgroundColor(Color.DKGRAY)
-                        card.setBackgroundColor(Color.DKGRAY)
+                        draggedInnerFrame?.setBackgroundColor(Color.parseColor("#4B89DC"))
+                        targetInnerFrame?.setBackgroundColor(Color.parseColor("#4B89DC"))
                     }, 500)
                 }
                 break
@@ -349,6 +343,9 @@ private fun startVocabScheduler() {
             setTextColor(Color.WHITE)
             setPadding(0, 0, 0, 24)
             gravity = Gravity.CENTER
+
+            // Apply pixel font if available
+            pixelFont?.let { typeface = it }
         }
 
         val message = TextView(this).apply {
@@ -356,10 +353,17 @@ private fun startVocabScheduler() {
             textSize = 20f
             setTextColor(Color.YELLOW)
             gravity = Gravity.CENTER
+
+            // Apply pixel font if available
+            pixelFont?.let { typeface = it }
         }
 
         val closeButton = Button(this).apply {
             text = "Continue"
+
+            // Apply pixel font if available
+            pixelFont?.let { typeface = it }
+
             setOnClickListener {
                 try {
                     windowManager.removeView(popup)

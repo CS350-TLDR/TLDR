@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -30,13 +32,11 @@
             </intent-filter>
         </activity>
 
-        <!-- Pop Up Service -->
-        <service
-            android:name=".model.services.PopupService"
-            android:enabled="true"
-            android:exported="false" />
-
+        <service android:name=".model.services.TriviaService" />
+        <service android:name=".model.services.VideoService" />
+        <service android:name=".model.services.FlashcardService" />
         <service android:name=".model.services.VocabMatchService" />
+
 
 
     </application>
