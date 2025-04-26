@@ -62,12 +62,8 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
     LaunchedEffect(Unit) {
         vm.loadUserData(ctx)
         vm.initStreakManager(ctx)
-        vm.checkDailyStreak(ctx) { reward ->
-            if (reward > 0) {
-                streakReward = reward
-                showStreakDialog = true
-            }
-        }
+
+
     }
 
     PixelBackground {

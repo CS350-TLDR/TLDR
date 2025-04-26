@@ -99,6 +99,13 @@ class MainMenuViewModel : ViewModel() {
         if (streakManager == null) {
             initStreakManager(context)
         }
+
+        if (enabled) {
+            checkDailyStreak(context) { reward ->
+
+            }
+        }
+
         val intervalMs = getIntervalMillis(_interval.value)
 
         when (_activity.value) {
