@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import com.comp350.tldr.view.RobotWithCustomization
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,8 +32,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.comp350.tldr.R
 import com.comp350.tldr.controller.viewmodels.MainMenuViewModel
-import com.comp350.tldr.controller.viewmodels.ProfileViewModel
-import com.comp350.tldr.view.screens.ProfileScreen
 import com.comp350.tldr.view.components.PixelBackground
 import com.comp350.tldr.view.theme.AppTheme
 import kotlinx.coroutines.delay
@@ -47,8 +46,6 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
     val enabled by vm.popupEnabled.collectAsState()
     val timeRemaining by vm.timeRemaining.collectAsState()
     val streak by vm.streak.collectAsState()
-
-
     val isWearingSunglasses by vm.isWearingSunglasses.collectAsState()
 
     var toggleCooldown by remember { mutableStateOf(false) }
@@ -58,44 +55,26 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
     var topicOpen by remember { mutableStateOf(false) }
     var activityOpen by remember { mutableStateOf(false) }
     var intervalOpen by remember { mutableStateOf(false) }
+    var profileMenuOpen by remember { mutableStateOf(false) }
 
-    // This runs every time the screen appears
+    val navigationController = remember { NavigationController(navController) }
+
     LaunchedEffect(Unit) {
-        // IMPORTANT: Load the latest user data (including sunglasses state)
         vm.loadUserData(ctx)
-
         vm.initStreakManager(ctx)
-        vm.checkDailyStreak(ctx) { reward ->
-            if (reward > 0) {
-                streakReward = reward
-                showStreakDialog = true
-            }
-        }
+
+
     }
 
     PixelBackground {
         Box(Modifier.fillMaxSize()) {
             Column(
                 Modifier
-                    .padding(top = 8.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
+                    .padding(top = 80.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Replace the original Image with RobotWithCustomization
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    RobotWithCustomization(
-                        isWearingSunglasses = isWearingSunglasses,
-                        size = 160,
-                        sunglassesOffsetY = -16
-                    )
-                }
-
-                Spacer(Modifier.height(16.dp))
-
                 DropdownSelector(
                     label = "Topic",
                     selected = topic,
@@ -162,7 +141,10 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                     }
                 )
 
-                Spacer(Modifier.height(60.dp))
+                if (enabled) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    CountdownTimer(timeRemaining)
+                }
             }
 
             Box(
@@ -173,18 +155,65 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                 DailyStreakCounter(streak)
             }
 
-            if (enabled) {
+            // Profile icon in top right
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 16.dp, end = 16.dp)
+                    .zIndex(10f)
+            ) {
                 Box(
+                    contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 16.dp, end = 16.dp)
+                        .size(56.dp)
+                        .background(Color.White, shape = CircleShape)
+                        .clickable {
+                            profileMenuOpen = !profileMenuOpen
+                        }
                 ) {
-                    CountdownTimer(timeRemaining)
+                    RobotWithCustomization(
+                        isWearingSunglasses = isWearingSunglasses,
+                        size = 40,
+                        sunglassesOffsetY = -9
+                    )
+
+                }
+
+                DropdownMenu(
+                    expanded = profileMenuOpen,
+                    onDismissRequest = { profileMenuOpen = false },
+                    modifier = Modifier
+                        .width(150.dp)
+                        .background(Color.White)
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "Profile",
+                                fontSize = 18.sp,
+                                fontFamily = AppTheme.pixelFontFamily
+                            )
+                        },
+                        onClick = {
+                            profileMenuOpen = false
+                            navController.navigate("profile")
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "Logout",
+                                fontSize = 18.sp,
+                                fontFamily = AppTheme.pixelFontFamily
+                            )
+                        },
+                        onClick = {
+                            profileMenuOpen = false
+                            navigationController.navigateToWelcome()
+                        }
+                    )
                 }
             }
-
-            ProfileButton(navController)
-            LogoutButton(navController)
 
             if (showStreakDialog) {
                 StreakRewardDialog(
@@ -362,11 +391,6 @@ private fun PopupToggle(
                 }
             }
         }
-
-        if (enabled) {
-            Spacer(Modifier.height(8.dp))
-            Text("glhf", fontSize = 18.sp, color = Color.White, fontFamily = AppTheme.pixelFontFamily)
-        }
     }
 }
 
@@ -454,65 +478,3 @@ private fun CountdownTimer(timeRemaining: Long) {
     )
 }
 
-@Composable
-private fun ProfileButton(navController: NavController) {
-    Box(
-        Modifier
-            .fillMaxSize()
-            .padding(end = 24.dp, bottom = 24.dp),
-        contentAlignment = Alignment.BottomEnd
-    ) {
-        Button(
-            onClick = { navController.navigate("profile") },
-            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.size(width = 120.dp, height = 50.dp)
-        ) {
-            Text(
-                "Profile",
-                fontSize = 22.sp,
-                color = AppTheme.darkBlueButtonColor,
-                style = AppTheme.pixelTextStyle.copy(
-                    shadow = AppTheme.pixelTextStyle.shadow?.copy(
-                        blurRadius = 1f,
-                        offset = Offset(2f, 2f)
-                    )
-                )
-            )
-        }
-    }
-}
-
-@Composable
-private fun LogoutButton(navController: NavController) {
-    val navigationController = remember { NavigationController(navController) }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(start = 24.dp, bottom = 24.dp),
-        contentAlignment = Alignment.BottomStart,
-        content = {
-            Button(
-                onClick = {
-                    navigationController.navigateToWelcome()
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.size(width = 120.dp, height = 50.dp)
-            ) {
-                Text(
-                    "Logout",
-                    fontSize = 22.sp,
-                    color = AppTheme.darkBlueButtonColor,
-                    style = AppTheme.pixelTextStyle.copy(
-                        shadow = AppTheme.pixelTextStyle.shadow?.copy(
-                            blurRadius = 1f,
-                            offset = Offset(2f, 2f)
-                        )
-                    )
-                )
-            }
-        }
-    )
-}

@@ -29,7 +29,7 @@ import com.comp350.tldr.controller.navigation.NavigationController
 import com.comp350.tldr.controller.viewmodels.ProfileViewModel
 import com.comp350.tldr.view.components.PixelBackground
 import com.comp350.tldr.view.theme.AppTheme
-
+import com.comp350.tldr.view.RobotWithCustomization
 @Composable
 fun ProfileScreen(
     navController: NavController,
@@ -562,34 +562,3 @@ private fun ProfileLoadingOverlay(isLoading: Boolean) {
     }
 }
 
-@Composable
-fun RobotWithCustomization(
-    isWearingSunglasses: Boolean,
-    size: Int = 120,
-    sunglassesOffsetY: Int = -12
-) {
-    Box(
-        contentAlignment = Alignment.Center
-    ) {
-        // Base robot image
-        Image(
-            painter = painterResource(id = R.drawable.robot),
-            contentDescription = "Robot character",
-            modifier = Modifier.size(size.dp),
-            contentScale = ContentScale.Fit
-        )
-
-        // Sunglasses overlay if equipped
-        if (isWearingSunglasses) {
-            Image(
-                painter = painterResource(id = R.drawable.sunglasses),
-                contentDescription = "Sunglasses",
-                modifier = Modifier
-                    .size(size.dp)
-                    .offset(y = sunglassesOffsetY.dp)
-                    .zIndex(2f),
-                contentScale = ContentScale.Fit
-            )
-        }
-    }
-}
