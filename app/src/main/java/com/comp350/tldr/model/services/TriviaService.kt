@@ -22,6 +22,7 @@ class TriviaService : Service() {
     private lateinit var auth: FirebaseAuth
     private lateinit var sharedPrefs: android.content.SharedPreferences
 
+    private var currentTopic = "Python"
     private var intervalMs: Long = 60000
     private var gears = 0
     private var correctAnswers = 0
@@ -41,6 +42,29 @@ class TriviaService : Service() {
         Question("How do you add an element to a list?", listOf("my_list.append(element)", "my_list.add(element)", "my_list.insert(element)", "my_list.push(element)"), 0),
         Question("What symbol is used for comments in Python?", listOf("#", "//", "/*", "<!-->"), 0),
         Question("Which data type is immutable?", listOf("Tuple", "List", "Dictionary", "Set"), 0)
+    )
+
+    private val cleanCodeQuestions = listOf(
+        Question("Why does the author argue that we will never be rid of code?",
+            listOf("Code is outdated technology", "Requirements can never be abstracted", "Code specifies requirements in executable detail", "Business people can't write code"), 2),
+        Question("What common programmer experience is described as \"wading\"?",
+            listOf("Debugging hardware issues", "Struggling through bad code", "Brainstorming ideas", "Designing UI/UX"), 1),
+        Question("What does LeBlanc's Law state?",
+            listOf("Bugs are inevitable", "Later equals never", "Clean code is slow code", "Deadlines overrule quality"), 1),
+        Question("What is a major consequence of a messy codebase over time?",
+            listOf("Lower memory usage", "Fewer bugs", "Decreasing productivity", "Better performance"), 2),
+        Question("What typically triggers a \"Grand Redesign in the Sky\"?",
+            listOf("Managerial demand for innovation", "Budget overflow", "Developer frustration with messy code", "A new CEO"), 2),
+        Question("What quality does Michael Feathers say defines clean code?",
+            listOf("It's fast to write", "It looks like someone cared", "It avoids using functions", "It uses the latest framework"), 1),
+        Question("What metaphor do Dave Thomas and Andy Hunt use to describe messy code?",
+            listOf("A house of cards", "Broken windows", "A tangled web", "A leaking faucet"), 1),
+        Question("According to Ron Jeffries, what is a key sign of clean code?",
+            listOf("It uses long variable names", "It has no comments", "It minimizes duplication", "It's optimized for performance"), 2),
+        Question("What does the \"Boy Scout Rule\" in programming advocate for?",
+            listOf("Code must be rewritten monthly", "Add at least one new feature per commit", "Always improve the code you touch", "Avoid touching old code"), 2),
+        Question("What analogy does the author use to describe the path to writing clean code?",
+            listOf("A puzzle", "A paint-by-numbers kit", "Painting a picture", "Baking a cake"), 2)
     )
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -67,6 +91,7 @@ class TriviaService : Service() {
 
     private fun handleStart(intent: Intent) {
         intervalMs = intent.getLongExtra("interval", 60000)
+        currentTopic = intent.getStringExtra("topic") ?: "Python"
 
         timer?.cancel()
         timer = Timer()
@@ -94,8 +119,16 @@ class TriviaService : Service() {
         }, intervalMs, intervalMs)
     }
 
+    private fun getQuestionsForCurrentTopic(): List<Question> {
+        return when (currentTopic) {
+            "Clean Code" -> cleanCodeQuestions
+            else -> pythonQuestions
+        }
+    }
+
     private fun showRandomQuiz() {
-        val question = pythonQuestions.randomOrNull() ?: return
+        val questions = getQuestionsForCurrentTopic()
+        val question = questions.randomOrNull() ?: return
         removeAllViews()
         floatingView = createQuizView(question)
         addOverlay(floatingView!!)

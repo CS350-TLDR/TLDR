@@ -24,6 +24,7 @@ class VideoService : Service() {
     private lateinit var auth: FirebaseAuth
     private lateinit var sharedPrefs: android.content.SharedPreferences
 
+    private var currentTopic = "Python"
     private var intervalMs: Long = 60000
     private var gears = 0
     private val blueColor = "#2196F3"
@@ -52,6 +53,7 @@ class VideoService : Service() {
 
     private fun handleStart(intent: Intent) {
         intervalMs = intent.getLongExtra("interval", 60000)
+        currentTopic = intent.getStringExtra("topic") ?: "Python"
 
         timer?.cancel()
         timer = Timer()
@@ -79,6 +81,13 @@ class VideoService : Service() {
         }, intervalMs, intervalMs)
     }
 
+    private fun getVideoResources(): List<Int> {
+        return when (currentTopic) {
+            "Clean Code" -> listOf(R.raw.cc1)
+            else -> listOf(R.raw.pythonbasics, R.raw.oop_vs_functional, R.raw.drake, R.raw.joerogan)
+        }
+    }
+
     private fun createVideoLayout(): View {
         val frameLayout = FrameLayout(this)
 
@@ -92,7 +101,7 @@ class VideoService : Service() {
         videoViewComponent = video
 
         try {
-            val videoResIds = listOf(R.raw.pythonbasics, R.raw.oop_vs_functional, R.raw.drake, R.raw.joerogan)
+            val videoResIds = getVideoResources()
             val randomVideoResId = videoResIds.random()
             val videoUri = Uri.parse("android.resource://$packageName/$randomVideoResId")
 
@@ -300,7 +309,5 @@ class VideoService : Service() {
         timer?.cancel()
         removeVideoView()
         super.onDestroy()
-
-
     }
 }

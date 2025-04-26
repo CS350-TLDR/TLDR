@@ -1,6 +1,7 @@
 package com.comp350.tldr.model.services
 
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
@@ -26,6 +27,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.Timer
 import kotlin.math.abs
+import com.google.firebase.auth.FirebaseAuth
 
 class VocabMatchService : Service() {
     private val serviceIdentifier = "VocabMatchService"
@@ -34,8 +36,13 @@ class VocabMatchService : Service() {
     private val cardPairs = mutableMapOf<String, String>()
     private var vocabCoroutineJob: Job? = null
     private var pixelFont: Typeface? = null
+    private var currentTopic = "Python"
 
-    private val sampleQuestions = listOf(
+    private lateinit var auth: FirebaseAuth
+    private lateinit var sharedPrefs: android.content.SharedPreferences
+    private var gears = 0
+
+    private val samplePythonQuestions = listOf(
         "What are variables used for?" to "To store data",
         "What is the correct form to name a variable with multiple words?" to "snake_case",
         "What keyword is used to define a function in Python?" to "def",
@@ -58,6 +65,29 @@ class VocabMatchService : Service() {
         "How do you import a module?" to "import module"
     )
 
+    private val cleanCodeQuestions = listOf(
+        "What does the Boy Scout Rule suggest?" to "Leave the code cleaner than you found it",
+        "What is a common sign of bad code?" to "Duplication",
+        "What does LeBlanc's law state?" to "Later equals never",
+        "Why should functions be small?" to "They're easier to understand, test, and reuse",
+        "What naming convention should be used for variables?" to "Clear, intention-revealing names",
+        "What is a code smell?" to "A surface indication of deeper problems",
+        "What does the Single Responsibility Principle state?" to "A class should have only one reason to change",
+        "What is the problem with comments?" to "They often compensate for unclear code",
+        "What is meant by 'Technical Debt'?" to "Future costs from taking shortcuts now",
+        "What is a side effect?" to "When a function changes something outside its scope",
+        "Why should error handling be separated from normal logic?" to "To improve code clarity and readability",
+        "What is the DRY principle?" to "Don't Repeat Yourself",
+        "Why are meaningful names important?" to "They make code self-documenting",
+        "What is 'primitive obsession'?" to "Overuse of primitive data types instead of custom objects",
+        "What are the benefits of test-driven development?" to "It ensures code works and supports refactoring",
+        "What should a good function do?" to "Do one thing, do it well, do it only",
+        "What is continuous refactoring?" to "Constantly improving code without changing behavior",
+        "What is a good rule for function arguments?" to "Zero to two arguments is ideal",
+        "What makes comments dangerous?" to "They can become outdated while code changes",
+        "Why does code formatting matter?" to "It improves readability and signals professionalism"
+    )
+
     private val correctMatches = mutableSetOf<String>()
     private val matchedCards = mutableSetOf<View>()
     private var intervalMs: Long = 60000L
@@ -73,6 +103,10 @@ class VocabMatchService : Service() {
         super.onCreate()
         Log.d(serviceIdentifier, "VocabMatchService created")
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+
+        auth = FirebaseAuth.getInstance()
+        sharedPrefs = getSharedPreferences("tldr_prefs", Context.MODE_PRIVATE)
+        loadGears()
 
         try {
             pixelFont = resources.getFont(resources.getIdentifier("rainyhearts", "font", packageName))
@@ -100,6 +134,8 @@ class VocabMatchService : Service() {
 
     private fun handleStart(intent: Intent) {
         intervalMs = intent.getLongExtra("interval", 60000L)
+        currentTopic = intent.getStringExtra("topic") ?: "Python"
+
         timer?.cancel()
         timer = Timer()
         handler.post { refreshCards() }
@@ -137,13 +173,21 @@ class VocabMatchService : Service() {
         }
     }
 
+    private fun getQuestionsForTopic(): List<Pair<String, String>> {
+        return when (currentTopic) {
+            "Clean Code" -> cleanCodeQuestions
+            else -> samplePythonQuestions
+        }
+    }
+
     private fun refreshCards() {
         removeAllCards()
         correctMatches.clear()
         matchedCards.clear()
         gearsEarned = 0
 
-        val shuffled = sampleQuestions.shuffled().take(4)
+        val questionList = getQuestionsForTopic()
+        val shuffled = questionList.shuffled().take(4)
         val questions = shuffled.map { it.first }
         val answers = shuffled.map { it.second }
         val allItems = (questions + answers).shuffled()
@@ -286,6 +330,10 @@ class VocabMatchService : Service() {
                     matchedCards.add(card)
                     gearsEarned++
 
+
+                    gears++
+                    saveGears()
+
                     val draggedInnerFrame = draggedCard.findViewById<FrameLayout>(1001)
                     val targetInnerFrame = card.findViewById<FrameLayout>(1001)
 
@@ -343,8 +391,6 @@ class VocabMatchService : Service() {
             setTextColor(Color.WHITE)
             setPadding(0, 0, 0, 24)
             gravity = Gravity.CENTER
-
-
             pixelFont?.let { typeface = it }
         }
 
@@ -353,21 +399,16 @@ class VocabMatchService : Service() {
             textSize = 20f
             setTextColor(Color.YELLOW)
             gravity = Gravity.CENTER
-
-
             pixelFont?.let { typeface = it }
         }
 
         val closeButton = Button(this).apply {
             text = "Continue"
-
-
             pixelFont?.let { typeface = it }
 
             setOnClickListener {
                 try {
                     windowManager.removeView(popup)
-
                 } catch (e: Exception) {
                     Log.e(serviceIdentifier, "Error removing popup", e)
                 }
@@ -427,6 +468,18 @@ class VocabMatchService : Service() {
         cards.clear()
         matchedCards.clear()
         waitingForNextSet = true
+    }
+
+    private fun loadGears() {
+        val userId = auth.currentUser?.uid
+        val prefs = if (userId != null) getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE) else sharedPrefs
+        gears = prefs.getInt("gears", 0)
+    }
+
+    private fun saveGears() {
+        val userId = auth.currentUser?.uid
+        val prefs = if (userId != null) getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE) else sharedPrefs
+        prefs.edit().putInt("gears", gears).apply()
     }
 
     override fun onDestroy() {
