@@ -33,6 +33,10 @@ class ProfileViewModel : ViewModel() {
 
     private val SUNGLASSES_COST = 5
 
+    private val PREFS_FILE = "com.comp350.tldr.preferences"
+    private val PREFS_SUNGLASSES_UNLOCKED = "sunglasses_unlocked"
+    private val PREFS_WEARING_SUNGLASSES = "wearing_sunglasses"
+
     fun loadUserData(context: Context) {
         _isLoading.value = true
 
@@ -40,29 +44,26 @@ class ProfileViewModel : ViewModel() {
             val currentUser = auth.currentUser
 
             if (currentUser != null) {
-                // Get user ID
                 val userId = currentUser.uid
-
-                // Load from SharedPreferences
                 val userPrefs = context.getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE)
-
-                // Load user data
                 _nickname.value = userPrefs.getString("nickname", "Academia Lord") ?: "Academia Lord"
                 _questionsAnswered.value = userPrefs.getInt("questions_answered", 0)
                 _gears.value = userPrefs.getInt("gears", 0)
-                _hasUnlockedSunglasses.value = userPrefs.getBoolean("has_unlocked_sunglasses", false)
-                _isWearingSunglasses.value = userPrefs.getBoolean("is_wearing_sunglasses", false)
+
+                val appPrefs = context.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
+                _hasUnlockedSunglasses.value = appPrefs.getBoolean(PREFS_SUNGLASSES_UNLOCKED, false)
+                _isWearingSunglasses.value = appPrefs.getBoolean(PREFS_WEARING_SUNGLASSES, false)
             } else {
-                // Anonymous user or not logged in
                 val sharedPrefs = context.getSharedPreferences("tldr_prefs", Context.MODE_PRIVATE)
                 _nickname.value = sharedPrefs.getString("nickname", "TLDR Player") ?: "TLDR Player"
                 _questionsAnswered.value = sharedPrefs.getInt("questions_answered", 0)
                 _gears.value = sharedPrefs.getInt("gears", 0)
-                _hasUnlockedSunglasses.value = sharedPrefs.getBoolean("has_unlocked_sunglasses", false)
-                _isWearingSunglasses.value = sharedPrefs.getBoolean("is_wearing_sunglasses", false)
+
+                val appPrefs = context.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
+                _hasUnlockedSunglasses.value = appPrefs.getBoolean(PREFS_SUNGLASSES_UNLOCKED, false)
+                _isWearingSunglasses.value = appPrefs.getBoolean(PREFS_WEARING_SUNGLASSES, false)
             }
         } catch (e: Exception) {
-            // Handle errors
         } finally {
             _isLoading.value = false
         }
@@ -79,21 +80,17 @@ class ProfileViewModel : ViewModel() {
             val currentUser = auth.currentUser
 
             if (currentUser != null) {
-                // Logged in user
                 val userId = currentUser.uid
                 val userPrefs = context.getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE)
                 userPrefs.edit().putString("nickname", newNickname).apply()
             } else {
-                // Anonymous user
                 val sharedPrefs = context.getSharedPreferences("tldr_prefs", Context.MODE_PRIVATE)
                 sharedPrefs.edit().putString("nickname", newNickname).apply()
             }
 
-            // Update state
             _nickname.value = newNickname
             _isEditing.value = false
         } catch (e: Exception) {
-            // Handle errors
         }
     }
 
@@ -108,26 +105,23 @@ class ProfileViewModel : ViewModel() {
             if (currentUser != null) {
                 val userId = currentUser.uid
                 val userPrefs = context.getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE)
-                userPrefs.edit()
-                    .putInt("gears", updatedGears)
-                    .putBoolean("has_unlocked_sunglasses", true)
-                    .putBoolean("is_wearing_sunglasses", true)
-                    .apply()
+                userPrefs.edit().putInt("gears", updatedGears).apply()
             } else {
                 val sharedPrefs = context.getSharedPreferences("tldr_prefs", Context.MODE_PRIVATE)
-                sharedPrefs.edit()
-                    .putInt("gears", updatedGears)
-                    .putBoolean("has_unlocked_sunglasses", true)
-                    .putBoolean("is_wearing_sunglasses", true)
-                    .apply()
+                sharedPrefs.edit().putInt("gears", updatedGears).apply()
             }
+
+            val appPrefs = context.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
+            appPrefs.edit()
+                .putBoolean(PREFS_SUNGLASSES_UNLOCKED, true)
+                .putBoolean(PREFS_WEARING_SUNGLASSES, true)
+                .apply()
 
             _gears.value = updatedGears
             _hasUnlockedSunglasses.value = true
             _isWearingSunglasses.value = true
 
         } catch (e: Exception) {
-            // Handle errors
         } finally {
             _isLoading.value = false
         }
@@ -139,25 +133,15 @@ class ProfileViewModel : ViewModel() {
 
         try {
             val newWearingState = !_isWearingSunglasses.value
-            val currentUser = auth.currentUser
 
-            if (currentUser != null) {
-                val userId = currentUser.uid
-                val userPrefs = context.getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE)
-                userPrefs.edit()
-                    .putBoolean("is_wearing_sunglasses", newWearingState)
-                    .apply()
-            } else {
-                val sharedPrefs = context.getSharedPreferences("tldr_prefs", Context.MODE_PRIVATE)
-                sharedPrefs.edit()
-                    .putBoolean("is_wearing_sunglasses", newWearingState)
-                    .apply()
-            }
+            val appPrefs = context.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
+            appPrefs.edit()
+                .putBoolean(PREFS_WEARING_SUNGLASSES, newWearingState)
+                .apply()
 
             _isWearingSunglasses.value = newWearingState
 
         } catch (e: Exception) {
-            // Handle errors
         } finally {
             _isLoading.value = false
         }

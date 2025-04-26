@@ -300,5 +300,7 @@ class VideoService : Service() {
         timer?.cancel()
         removeVideoView()
         super.onDestroy()
+
+
     }
 }

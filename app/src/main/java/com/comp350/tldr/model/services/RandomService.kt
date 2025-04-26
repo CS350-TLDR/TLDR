@@ -81,19 +81,18 @@ class RandomService : Service() {
         val activities = listOf("Trivia", "Video", "VocabMatch")
         val randomActivity = activities.random()
 
-        // First stop the currently active service if any
+
         stopCurrentService()
 
-        // Track the newly started service
         currentActiveService = randomActivity
 
-        // Start the randomly chosen service with START_SERVICE instead of SHOW_NOW
+
         when (randomActivity) {
             "Trivia" -> {
                 Log.d(serviceIdentifier, "Starting Trivia activity")
                 val intent = Intent(this, TriviaService::class.java).apply {
                     action = "START_SERVICE"
-                    putExtra("interval", 100000000L) // Set a very long interval so it doesn't auto-refresh
+                    putExtra("interval", 100000000L)
                 }
                 startService(intent)
             }
@@ -117,7 +116,7 @@ class RandomService : Service() {
     }
 
     private fun stopCurrentService() {
-        // Only stop the currently active service
+
         when (currentActiveService) {
             "Trivia" -> {
                 val intent = Intent(this, TriviaService::class.java).apply {
@@ -142,7 +141,6 @@ class RandomService : Service() {
 
     override fun onDestroy() {
         timer?.cancel()
-        // Stop any active service when this service is destroyed
         stopCurrentService()
         Log.d(serviceIdentifier, "RandomService destroyed")
         super.onDestroy()

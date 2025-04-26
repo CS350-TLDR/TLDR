@@ -344,7 +344,7 @@ class VocabMatchService : Service() {
             setPadding(0, 0, 0, 24)
             gravity = Gravity.CENTER
 
-            // Apply pixel font if available
+
             pixelFont?.let { typeface = it }
         }
 
@@ -354,19 +354,20 @@ class VocabMatchService : Service() {
             setTextColor(Color.YELLOW)
             gravity = Gravity.CENTER
 
-            // Apply pixel font if available
+
             pixelFont?.let { typeface = it }
         }
 
         val closeButton = Button(this).apply {
             text = "Continue"
 
-            // Apply pixel font if available
+
             pixelFont?.let { typeface = it }
 
             setOnClickListener {
                 try {
                     windowManager.removeView(popup)
+
                 } catch (e: Exception) {
                     Log.e(serviceIdentifier, "Error removing popup", e)
                 }
