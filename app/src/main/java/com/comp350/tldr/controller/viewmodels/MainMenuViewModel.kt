@@ -43,7 +43,7 @@ class MainMenuViewModel : ViewModel() {
     val popupEnabled: StateFlow<Boolean> = _popupEnabled
 
     val topics = listOf("Python")
-    val activities = listOf("Trivia", "Video", "Flashcards", "VocabMatch")
+    val activities = listOf("Trivia", "Video", "Flashcards", "VocabMatch", "Random")
     val intervals = listOf("1m", "5m", "10m", "30m", "1h", "2h")
 
     private var streakManager: DailyStreakManager? = null
@@ -108,9 +108,14 @@ class MainMenuViewModel : ViewModel() {
         }
         val intervalMs = getIntervalMillis(_interval.value)
 
+        // Stop any currently running services
         when (_activity.value) {
             "VocabMatch" -> {
                 val intent = Intent(context, com.comp350.tldr.model.services.VocabMatchService::class.java)
+                context.stopService(intent)
+            }
+            "Random" -> {
+                val intent = Intent(context, com.comp350.tldr.model.services.RandomService::class.java)
                 context.stopService(intent)
             }
             else -> {
@@ -124,6 +129,13 @@ class MainMenuViewModel : ViewModel() {
                 when (_activity.value) {
                     "VocabMatch" -> {
                         val intent = Intent(context, com.comp350.tldr.model.services.VocabMatchService::class.java).apply {
+                            action = "START_SERVICE"
+                            putExtra("interval", intervalMs)
+                        }
+                        context.startService(intent)
+                    }
+                    "Random" -> {
+                        val intent = Intent(context, com.comp350.tldr.model.services.RandomService::class.java).apply {
                             action = "START_SERVICE"
                             putExtra("interval", intervalMs)
                         }
