@@ -130,6 +130,7 @@ class MainMenuViewModel : ViewModel() {
                         val intent = Intent(context, com.comp350.tldr.model.services.VocabMatchService::class.java).apply {
                             action = "START_SERVICE"
                             putExtra("interval", intervalMs)
+                            putExtra("topic", _topic.value)
                         }
                         context.startService(intent)
                     }
@@ -137,6 +138,7 @@ class MainMenuViewModel : ViewModel() {
                         val intent = Intent(context, com.comp350.tldr.model.services.RandomService::class.java).apply {
                             action = "START_SERVICE"
                             putExtra("interval", intervalMs)
+                            putExtra("topic", _topic.value)
                         }
                         context.startService(intent)
                     }
