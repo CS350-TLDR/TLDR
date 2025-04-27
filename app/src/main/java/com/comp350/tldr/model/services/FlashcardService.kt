@@ -59,7 +59,27 @@ class FlashcardService : Service() {
         Question("What is a code smell?",
             listOf("A sign of poor design", "A compiler warning", "A syntax error", "A performance bottleneck"), 0),
         Question("What is the Single Responsibility Principle?",
-            listOf("A class should have only one reason to change", "Code should be written by a single person", "Functions should have only one parameter", "Tests should check only one thing"), 0)
+            listOf("A class should have only one reason to change", "Code should be written by a single person", "Functions should have only one parameter", "Tests should check only one thing"), 0),
+        Question("What is the primary purpose of a name in code?",
+            listOf("To reveal the intent of the variable, function, or class", "To shorten the code", "To confuse other programmers", "To pass compiler checks"), 0),
+        Question("What should you do if a name requires a comment to explain it?",
+            listOf("Rename it to reveal intent", "Keep it as is", "Shorten the name", "Add more comments instead"), 0),
+        Question("What term describes names that suggest false meanings?",
+            listOf("Disinformation", "Redirection", "Inference", "Compression"), 0),
+        Question("Why are single-letter names generally discouraged?",
+            listOf("They are not searchable or meaningful", "They are difficult to type", "They take up too much space", "They slow down compilation"), 0),
+        Question("What is a \"noise word\" in a name?",
+            listOf("A redundant or meaningless addition to the name", "A word that makes the name funnier", "A technical term that describes functionality", "A requirement in Java programming"), 0),
+        Question("Which of the following is a better practice?",
+            listOf("Naming classes with noun phrases", "Using m_ prefixes for member variables", "Using Hungarian Notation in modern code", "Naming classes with verbs"), 0),
+        Question("What is the \"Boy Scout Rule\" applied to naming?",
+            listOf("Leave names cleaner and more understandable than you found them", "Always add a joke to every name", "Encode types into every name", "Keep names short at all costs"), 0),
+        Question("When should single-letter variables like i, j, or k be used?",
+            listOf("Only in small local scopes, like short loops", "Always, to save space", "Never, under any circumstances", "In function names"), 0),
+        Question("What naming mistake leads to mental mapping problems?",
+            listOf("Using single-letter names that require extra mental translation", "Long, descriptive names", "Using consistent technical terms", "Using searchable constants"), 0),
+        Question("When should you use problem domain names?",
+            listOf("When no technical term exists for the concept", "To impress managers", "To make code unreadable to other developers", "To encode types and scopes"), 0)
     )
 
     override fun onBind(intent: Intent?): IBinder? = null

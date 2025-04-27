@@ -63,9 +63,41 @@ class TriviaService : Service() {
             listOf("It uses long variable names", "It has no comments", "It minimizes duplication", "It's optimized for performance"), 2),
         Question("What does the \"Boy Scout Rule\" in programming advocate for?",
             listOf("Code must be rewritten monthly", "Add at least one new feature per commit", "Always improve the code you touch", "Avoid touching old code"), 2),
+
         Question("What analogy does the author use to describe the path to writing clean code?",
-            listOf("A puzzle", "A paint-by-numbers kit", "Painting a picture", "Baking a cake"), 2)
+            listOf("A puzzle", "A paint-by-numbers kit", "Painting a picture", "Baking a cake"), 2),
+            Question("What is the primary purpose of a name in code?",
+                listOf("To shorten the code", "To reveal the intent of the variable, function, or class", "To confuse other programmers", "To pass compiler checks"), 1),
+
+            Question("What should you do if a name requires a comment to explain it?",
+                listOf("Keep it as is", "Shorten the name", "Rename it to reveal intent", "Add more comments instead"), 2),
+
+            Question("What term describes names that suggest false meanings?",
+                listOf("Disinformation", "Redirection", "Inference", "Compression"), 0),
+
+            Question("Why are single-letter names generally discouraged?",
+                listOf("They are difficult to type", "They are not searchable or meaningful", "They take up too much space", "They slow down compilation"), 1),
+
+            Question("What is a \"noise word\" in a name?",
+                listOf("A word that makes the name funnier", "A redundant or meaningless addition to the name", "A technical term that describes functionality", "A requirement in Java programming"), 1),
+
+            Question("Which of the following is a better practice?",
+                listOf("Using m_ prefixes for member variables", "Using Hungarian Notation in modern code", "Naming classes with noun phrases", "Naming classes with verbs"), 2),
+
+            Question("What is the \"Boy Scout Rule\" applied to naming?",
+                listOf("Always add a joke to every name", "Leave names cleaner and more understandable than you found them", "Encode types into every name", "Keep names short at all costs"), 1),
+
+            Question("When should single-letter variables like i, j, or k be used?",
+                listOf("Always, to save space", "Only in small local scopes, like short loops", "Never, under any circumstances", "In function names"), 1),
+
+            Question("What naming mistake leads to mental mapping problems?",
+                listOf("Long, descriptive names", "Using single-letter names that require extra mental translation", "Using consistent technical terms", "Using searchable constants"), 1),
+
+            Question("When should you use problem domain names?",
+                listOf("When no technical term exists for the concept", "To impress managers", "To make code unreadable to other developers", "To encode types and scopes"), 0)
+
     )
+
 
     override fun onBind(intent: Intent?): IBinder? = null
 

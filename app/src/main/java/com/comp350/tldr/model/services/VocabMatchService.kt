@@ -85,8 +85,19 @@ class VocabMatchService : Service() {
         "What is continuous refactoring?" to "Constantly improving code without changing behavior",
         "What is a good rule for function arguments?" to "Zero to two arguments is ideal",
         "What makes comments dangerous?" to "They can become outdated while code changes",
-        "Why does code formatting matter?" to "It improves readability and signals professionalism"
+        "Why does code formatting matter?" to "It improves readability and signals professionalism",
+        "What is the primary purpose of a name in code?" to "To reveal the intent of the variable, function, or class",
+        "What should you do if a name requires a comment?" to "Rename it to reveal intent",
+        "What term describes names that suggest false meanings?" to "Disinformation",
+        "Why are single-letter names generally discouraged?" to "They are not searchable or meaningful",
+        "What is a \"noise word\" in a name?" to "A redundant or meaningless addition",
+        "How should classes be named?" to "With noun phrases",
+        "What is the \"Boy Scout Rule\" applied to naming?" to "Leave names cleaner than you found them",
+        "When should single-letter variables be used?" to "Only in small local scopes, like short loops",
+        "What causes mental mapping problems?" to "Names that require extra mental translation",
+        "When should you use problem domain names?" to "When no technical term exists for the concept"
     )
+
 
     private val correctMatches = mutableSetOf<String>()
     private val matchedCards = mutableSetOf<View>()
