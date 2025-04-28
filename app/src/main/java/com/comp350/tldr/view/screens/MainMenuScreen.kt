@@ -163,7 +163,7 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                 DailyStreakCounter(streak)
             }
 
-            // Profile icon in top right
+
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)

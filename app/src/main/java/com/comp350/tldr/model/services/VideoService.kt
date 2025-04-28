@@ -83,7 +83,7 @@ class VideoService : Service() {
 
     private fun getVideoResources(): List<Int> {
         return when (currentTopic) {
-            "Clean Code" -> listOf(R.raw.cc1, R.raw.cc2)
+            "Clean Code" -> listOf(R.raw.cc1, R.raw.cc2, R.raw.cc3)
             else -> listOf(R.raw.pythonbasics, R.raw.oop_vs_functional, R.raw.drake, R.raw.joerogan)
         }
     }
