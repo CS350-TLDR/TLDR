@@ -16,6 +16,7 @@ class RandomService : Service() {
     private var timer: Timer? = null
     private var intervalMs: Long = 60000
     private var currentActiveService: String? = null
+    private var currentTopic = "Python"
 
     private lateinit var auth: FirebaseAuth
     private lateinit var sharedPrefs: android.content.SharedPreferences
@@ -43,6 +44,9 @@ class RandomService : Service() {
 
     private fun handleStart(intent: Intent) {
         intervalMs = intent.getLongExtra("interval", 60000)
+        currentTopic = intent.getStringExtra("topic") ?: "Python"
+
+        Log.d(serviceIdentifier, "Starting Random Service with topic: $currentTopic")
 
         timer?.cancel()
         timer = Timer()
@@ -77,38 +81,51 @@ class RandomService : Service() {
     }
 
     private fun showRandomActivity() {
-        // Choose a random activity from the three available
-        val activities = listOf("Trivia", "Video", "VocabMatch")
+        // Choose a random activity from the available ones
+        val activities = listOf("Trivia", "Video", "VocabMatch", "Flashcards")
         val randomActivity = activities.random()
-
 
         stopCurrentService()
 
         currentActiveService = randomActivity
 
+        // Create a very long interval since we'll handle the timing in this service
+        val longInterval = 100000000L
 
         when (randomActivity) {
             "Trivia" -> {
-                Log.d(serviceIdentifier, "Starting Trivia activity")
+                Log.d(serviceIdentifier, "Starting Trivia activity with topic: $currentTopic")
                 val intent = Intent(this, TriviaService::class.java).apply {
                     action = "START_SERVICE"
-                    putExtra("interval", 100000000L)
+                    putExtra("interval", longInterval)
+                    putExtra("topic", currentTopic)
                 }
                 startService(intent)
             }
             "Video" -> {
-                Log.d(serviceIdentifier, "Starting Video activity")
+                Log.d(serviceIdentifier, "Starting Video activity with topic: $currentTopic")
                 val intent = Intent(this, VideoService::class.java).apply {
                     action = "START_SERVICE"
-                    putExtra("interval", 100000000L)
+                    putExtra("interval", longInterval)
+                    putExtra("topic", currentTopic)
                 }
                 startService(intent)
             }
             "VocabMatch" -> {
-                Log.d(serviceIdentifier, "Starting VocabMatch activity")
+                Log.d(serviceIdentifier, "Starting VocabMatch activity with topic: $currentTopic")
                 val intent = Intent(this, VocabMatchService::class.java).apply {
                     action = "START_SERVICE"
-                    putExtra("interval", 100000000L)
+                    putExtra("interval", longInterval)
+                    putExtra("topic", currentTopic)
+                }
+                startService(intent)
+            }
+            "Flashcards" -> {
+                Log.d(serviceIdentifier, "Starting Flashcards activity with topic: $currentTopic")
+                val intent = Intent(this, FlashcardService::class.java).apply {
+                    action = "START_SERVICE"
+                    putExtra("interval", longInterval)
+                    putExtra("topic", currentTopic)
                 }
                 startService(intent)
             }
@@ -116,7 +133,6 @@ class RandomService : Service() {
     }
 
     private fun stopCurrentService() {
-
         when (currentActiveService) {
             "Trivia" -> {
                 val intent = Intent(this, TriviaService::class.java).apply {
@@ -132,6 +148,12 @@ class RandomService : Service() {
             }
             "VocabMatch" -> {
                 val intent = Intent(this, VocabMatchService::class.java).apply {
+                    action = "STOP_SERVICE"
+                }
+                startService(intent)
+            }
+            "Flashcards" -> {
+                val intent = Intent(this, FlashcardService::class.java).apply {
                     action = "STOP_SERVICE"
                 }
                 startService(intent)

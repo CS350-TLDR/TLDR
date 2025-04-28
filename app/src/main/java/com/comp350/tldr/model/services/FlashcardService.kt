@@ -22,6 +22,7 @@ class FlashcardService : Service() {
     private lateinit var auth: FirebaseAuth
     private lateinit var sharedPrefs: android.content.SharedPreferences
 
+    private var currentTopic = "Python"
     private var intervalMs: Long = 60000
     private var gears = 0
 
@@ -36,6 +37,49 @@ class FlashcardService : Service() {
         Question("How do you add an element to a list?", listOf("my_list.append(element)", "my_list.add(element)", "my_list.insert(element)", "my_list.push(element)"), 0),
         Question("What symbol is used for comments in Python?", listOf("#", "//", "/*", "<!-->"), 0),
         Question("Which data type is immutable?", listOf("Tuple", "List", "Dictionary", "Set"), 0)
+    )
+
+    private val cleanCodeQuestions = listOf(
+        Question("What common programmer experience is described as \"wading\"?",
+            listOf("Struggling through bad code", "Debugging hardware issues", "Brainstorming ideas", "Designing UI/UX"), 0),
+        Question("What does LeBlanc's Law state?",
+            listOf("Later equals never", "Bugs are inevitable", "Clean code is slow code", "Deadlines overrule quality"), 0),
+        Question("What is a major consequence of a messy codebase over time?",
+            listOf("Decreasing productivity", "Lower memory usage", "Fewer bugs", "Better performance"), 0),
+        Question("What quality does Michael Feathers say defines clean code?",
+            listOf("It looks like someone cared", "It's fast to write", "It avoids using functions", "It uses the latest framework"), 0),
+        Question("What metaphor do Dave Thomas and Andy Hunt use to describe messy code?",
+            listOf("Broken windows", "A house of cards", "A tangled web", "A leaking faucet"), 0),
+        Question("According to Ron Jeffries, what is a key sign of clean code?",
+            listOf("It minimizes duplication", "It uses long variable names", "It has no comments", "It's optimized for performance"), 0),
+        Question("What does the \"Boy Scout Rule\" in programming advocate for?",
+            listOf("Always improve the code you touch", "Code must be rewritten monthly", "Add at least one new feature per commit", "Avoid touching old code"), 0),
+        Question("What makes a function name good?",
+            listOf("It describes what the function does", "It's short", "It includes the return type", "It starts with a verb"), 0),
+        Question("What is a code smell?",
+            listOf("A sign of poor design", "A compiler warning", "A syntax error", "A performance bottleneck"), 0),
+        Question("What is the Single Responsibility Principle?",
+            listOf("A class should have only one reason to change", "Code should be written by a single person", "Functions should have only one parameter", "Tests should check only one thing"), 0),
+        Question("What is the primary purpose of a name in code?",
+            listOf("To reveal the intent of the variable, function, or class", "To shorten the code", "To confuse other programmers", "To pass compiler checks"), 0),
+        Question("What should you do if a name requires a comment to explain it?",
+            listOf("Rename it to reveal intent", "Keep it as is", "Shorten the name", "Add more comments instead"), 0),
+        Question("What term describes names that suggest false meanings?",
+            listOf("Disinformation", "Redirection", "Inference", "Compression"), 0),
+        Question("Why are single-letter names generally discouraged?",
+            listOf("They are not searchable or meaningful", "They are difficult to type", "They take up too much space", "They slow down compilation"), 0),
+        Question("What is a \"noise word\" in a name?",
+            listOf("A redundant or meaningless addition to the name", "A word that makes the name funnier", "A technical term that describes functionality", "A requirement in Java programming"), 0),
+        Question("Which of the following is a better practice?",
+            listOf("Naming classes with noun phrases", "Using m_ prefixes for member variables", "Using Hungarian Notation in modern code", "Naming classes with verbs"), 0),
+        Question("What is the \"Boy Scout Rule\" applied to naming?",
+            listOf("Leave names cleaner and more understandable than you found them", "Always add a joke to every name", "Encode types into every name", "Keep names short at all costs"), 0),
+        Question("When should single-letter variables like i, j, or k be used?",
+            listOf("Only in small local scopes, like short loops", "Always, to save space", "Never, under any circumstances", "In function names"), 0),
+        Question("What naming mistake leads to mental mapping problems?",
+            listOf("Using single-letter names that require extra mental translation", "Long, descriptive names", "Using consistent technical terms", "Using searchable constants"), 0),
+        Question("When should you use problem domain names?",
+            listOf("When no technical term exists for the concept", "To impress managers", "To make code unreadable to other developers", "To encode types and scopes"), 0)
     )
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -62,6 +106,7 @@ class FlashcardService : Service() {
 
     private fun handleStart(intent: Intent) {
         intervalMs = intent.getLongExtra("interval", 60000)
+        currentTopic = intent.getStringExtra("topic") ?: "Python"
 
         timer?.cancel()
         timer = Timer()
@@ -91,13 +136,21 @@ class FlashcardService : Service() {
         }, 10000 + intervalMs, intervalMs)
     }
 
+    private fun getQuestionsForCurrentTopic(): List<Question> {
+        return when (currentTopic) {
+            "Clean Code" -> cleanCodeQuestions
+            else -> pythonQuestions
+        }
+    }
+
     private fun displayAllFlashcards() {
         removeAllFlashcards()
 
         val screenWidth = resources.displayMetrics.widthPixels
+        val questions = getQuestionsForCurrentTopic()
 
         for (i in 0 until 3) {
-            val question = pythonQuestions.random()
+            val question = questions.random()
             val card = createResizableFlashCardView(question)
 
             val xPos = (screenWidth / 6) + (i * screenWidth / 12)
@@ -115,9 +168,10 @@ class FlashcardService : Service() {
         }
 
         removeAllFlashcards()
+        val questions = getQuestionsForCurrentTopic()
 
         for (i in 0 until 3) {
-            val question = pythonQuestions.random()
+            val question = questions.random()
             val card = createResizableFlashCardView(question)
 
             val xPos = if (i < positions.size) positions[i].first else 100 + (i * 50)
@@ -144,6 +198,7 @@ class FlashcardService : Service() {
         }
 
         val titleBar = TextView(this).apply {
+            text = currentTopic
             setBackgroundColor(Color.parseColor("blue"))
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER

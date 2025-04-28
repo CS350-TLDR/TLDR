@@ -22,6 +22,7 @@ class TriviaService : Service() {
     private lateinit var auth: FirebaseAuth
     private lateinit var sharedPrefs: android.content.SharedPreferences
 
+    private var currentTopic = "Python"
     private var intervalMs: Long = 60000
     private var gears = 0
     private var correctAnswers = 0
@@ -42,6 +43,61 @@ class TriviaService : Service() {
         Question("What symbol is used for comments in Python?", listOf("#", "//", "/*", "<!-->"), 0),
         Question("Which data type is immutable?", listOf("Tuple", "List", "Dictionary", "Set"), 0)
     )
+
+    private val cleanCodeQuestions = listOf(
+        Question("Why does the author argue that we will never be rid of code?",
+            listOf("Code is outdated technology", "Requirements can never be abstracted", "Code specifies requirements in executable detail", "Business people can't write code"), 2),
+        Question("What common programmer experience is described as \"wading\"?",
+            listOf("Debugging hardware issues", "Struggling through bad code", "Brainstorming ideas", "Designing UI/UX"), 1),
+        Question("What does LeBlanc's Law state?",
+            listOf("Bugs are inevitable", "Later equals never", "Clean code is slow code", "Deadlines overrule quality"), 1),
+        Question("What is a major consequence of a messy codebase over time?",
+            listOf("Lower memory usage", "Fewer bugs", "Decreasing productivity", "Better performance"), 2),
+        Question("What typically triggers a \"Grand Redesign in the Sky\"?",
+            listOf("Managerial demand for innovation", "Budget overflow", "Developer frustration with messy code", "A new CEO"), 2),
+        Question("What quality does Michael Feathers say defines clean code?",
+            listOf("It's fast to write", "It looks like someone cared", "It avoids using functions", "It uses the latest framework"), 1),
+        Question("What metaphor do Dave Thomas and Andy Hunt use to describe messy code?",
+            listOf("A house of cards", "Broken windows", "A tangled web", "A leaking faucet"), 1),
+        Question("According to Ron Jeffries, what is a key sign of clean code?",
+            listOf("It uses long variable names", "It has no comments", "It minimizes duplication", "It's optimized for performance"), 2),
+        Question("What does the \"Boy Scout Rule\" in programming advocate for?",
+            listOf("Code must be rewritten monthly", "Add at least one new feature per commit", "Always improve the code you touch", "Avoid touching old code"), 2),
+
+        Question("What analogy does the author use to describe the path to writing clean code?",
+            listOf("A puzzle", "A paint-by-numbers kit", "Painting a picture", "Baking a cake"), 2),
+            Question("What is the primary purpose of a name in code?",
+                listOf("To shorten the code", "To reveal the intent of the variable, function, or class", "To confuse other programmers", "To pass compiler checks"), 1),
+
+            Question("What should you do if a name requires a comment to explain it?",
+                listOf("Keep it as is", "Shorten the name", "Rename it to reveal intent", "Add more comments instead"), 2),
+
+            Question("What term describes names that suggest false meanings?",
+                listOf("Disinformation", "Redirection", "Inference", "Compression"), 0),
+
+            Question("Why are single-letter names generally discouraged?",
+                listOf("They are difficult to type", "They are not searchable or meaningful", "They take up too much space", "They slow down compilation"), 1),
+
+            Question("What is a \"noise word\" in a name?",
+                listOf("A word that makes the name funnier", "A redundant or meaningless addition to the name", "A technical term that describes functionality", "A requirement in Java programming"), 1),
+
+            Question("Which of the following is a better practice?",
+                listOf("Using m_ prefixes for member variables", "Using Hungarian Notation in modern code", "Naming classes with noun phrases", "Naming classes with verbs"), 2),
+
+            Question("What is the \"Boy Scout Rule\" applied to naming?",
+                listOf("Always add a joke to every name", "Leave names cleaner and more understandable than you found them", "Encode types into every name", "Keep names short at all costs"), 1),
+
+            Question("When should single-letter variables like i, j, or k be used?",
+                listOf("Always, to save space", "Only in small local scopes, like short loops", "Never, under any circumstances", "In function names"), 1),
+
+            Question("What naming mistake leads to mental mapping problems?",
+                listOf("Long, descriptive names", "Using single-letter names that require extra mental translation", "Using consistent technical terms", "Using searchable constants"), 1),
+
+            Question("When should you use problem domain names?",
+                listOf("When no technical term exists for the concept", "To impress managers", "To make code unreadable to other developers", "To encode types and scopes"), 0)
+
+    )
+
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -67,6 +123,7 @@ class TriviaService : Service() {
 
     private fun handleStart(intent: Intent) {
         intervalMs = intent.getLongExtra("interval", 60000)
+        currentTopic = intent.getStringExtra("topic") ?: "Python"
 
         timer?.cancel()
         timer = Timer()
@@ -94,8 +151,16 @@ class TriviaService : Service() {
         }, intervalMs, intervalMs)
     }
 
+    private fun getQuestionsForCurrentTopic(): List<Question> {
+        return when (currentTopic) {
+            "Clean Code" -> cleanCodeQuestions
+            else -> pythonQuestions
+        }
+    }
+
     private fun showRandomQuiz() {
-        val question = pythonQuestions.randomOrNull() ?: return
+        val questions = getQuestionsForCurrentTopic()
+        val question = questions.randomOrNull() ?: return
         removeAllViews()
         floatingView = createQuizView(question)
         addOverlay(floatingView!!)

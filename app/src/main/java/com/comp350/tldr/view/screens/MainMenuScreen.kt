@@ -51,6 +51,7 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
     var toggleCooldown by remember { mutableStateOf(false) }
     var showStreakDialog by remember { mutableStateOf(false) }
     var streakReward by remember { mutableStateOf(0) }
+    var showTutorial by remember { mutableStateOf(false) }
 
     var topicOpen by remember { mutableStateOf(false) }
     var activityOpen by remember { mutableStateOf(false) }
@@ -62,8 +63,6 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
     LaunchedEffect(Unit) {
         vm.loadUserData(ctx)
         vm.initStreakManager(ctx)
-
-
     }
 
     PixelBackground {
@@ -147,6 +146,15 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                 }
             }
 
+            // Question mark help button at bottom middle
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp)
+            ) {
+                HelpButton(onClick = { showTutorial = true })
+            }
+
             Box(
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -176,7 +184,6 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                         size = 40,
                         sunglassesOffsetY = -9
                     )
-
                 }
 
                 DropdownMenu(
@@ -220,6 +227,12 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                     streak = streak,
                     reward = streakReward,
                     onDismiss = { showStreakDialog = false }
+                )
+            }
+
+            if (showTutorial) {
+                TutorialDialog(
+                    onDismiss = { showTutorial = false }
                 )
             }
         }
@@ -478,3 +491,260 @@ private fun CountdownTimer(timeRemaining: Long) {
     )
 }
 
+@Composable
+fun HelpButton(onClick: () -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(56.dp)
+            .background(Color.White, shape = CircleShape)
+            .clickable { onClick() }
+    ) {
+        Text(
+            text = "?",
+            color = AppTheme.darkBlueButtonColor,
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = AppTheme.pixelFontFamily
+        )
+    }
+}
+
+@Composable
+fun TutorialDialog(onDismiss: () -> Unit) {
+    var currentStep by remember { mutableStateOf(0) }
+    val totalSteps = 4
+
+
+    val tutorialContent = listOf(
+        TutorialStep(
+            title = "How to Use The App",
+            description = "Let's get started! This tutorial will show you how to use TLDR.",
+            showTopicSelector = false,
+            showActivitySelector = false,
+            showIntervalSelector = false,
+            showToggle = false
+        ),
+        TutorialStep(
+            title = "Select a Topic",
+            description = "First, choose a topic you want to learn about. Currently we offer Python programming and Clean Code.",
+            showTopicSelector = true,
+            showActivitySelector = false,
+            showIntervalSelector = false,
+            showToggle = false
+        ),
+        TutorialStep(
+            title = "Select an Activity",
+            description = "Next, choose how you want to learn. Try Trivia for questions, Video for short clips, Flashcards for memorization, or VocabMatch for a matching game.",
+            showTopicSelector = false,
+            showActivitySelector = true,
+            showIntervalSelector = false,
+            showToggle = false
+        ),
+        TutorialStep(
+            title = "Set Your Interval",
+            description = "Choose how frequently you want to see learning activities. From once per minute to every 2 hours.",
+            showTopicSelector = false,
+            showActivitySelector = false,
+            showIntervalSelector = true,
+            showToggle = false
+        ),
+        TutorialStep(
+            title = "Switch It On",
+            description = "Toggle the switch to start learning! Activities will pop up at your chosen interval while you use your device.",
+            showTopicSelector = false,
+            showActivitySelector = false,
+            showIntervalSelector = false,
+            showToggle = true
+        )
+    )
+
+    val step = tutorialContent[currentStep]
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF333333),
+        titleContentColor = Color.White,
+        textContentColor = Color.White,
+        title = {
+            Text(
+                text = step.title,
+                fontSize = 24.sp,
+                fontFamily = AppTheme.pixelFontFamily,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = step.description,
+                    fontSize = 18.sp,
+                    fontFamily = AppTheme.pixelFontFamily,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+
+                when {
+                    step.showTopicSelector -> {
+                        DropdownSelectorPreview(
+                            label = "Topic",
+                            selected = "Python",
+                            options = listOf("Python", "Clean Code")
+                        )
+                    }
+                    step.showActivitySelector -> {
+                        DropdownSelectorPreview(
+                            label = "Activity",
+                            selected = "Trivia",
+                            options = listOf("Trivia", "Video", "Flashcards", "VocabMatch", "Random")
+                        )
+                    }
+                    step.showIntervalSelector -> {
+                        DropdownSelectorPreview(
+                            label = "Interval",
+                            selected = "1m",
+                            options = listOf("1m", "5m", "10m", "30m", "1h", "2h")
+                        )
+                    }
+                    step.showToggle -> {
+                        PopupTogglePreview()
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (currentStep > 0) {
+                        Button(
+                            onClick = { currentStep -= 1 },
+                            colors = ButtonDefaults.buttonColors(containerColor = AppTheme.blueButtonColor)
+                        ) {
+                            Text(
+                                "Previous",
+                                fontFamily = AppTheme.pixelFontFamily,
+                                fontSize = 16.sp,
+                                color = Color.White
+                            )
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.width(88.dp))
+                    }
+
+
+                    Text(
+                        text = "${currentStep + 1}/${tutorialContent.size}",
+                        color = Color.White,
+                        fontFamily = AppTheme.pixelFontFamily,
+                        fontSize = 16.sp,
+                        modifier = Modifier.align(Alignment.CenterVertically)
+                    )
+
+                    if (currentStep < tutorialContent.size - 1) {
+                        Button(
+                            onClick = { currentStep += 1 },
+                            colors = ButtonDefaults.buttonColors(containerColor = AppTheme.blueButtonColor)
+                        ) {
+                            Text(
+                                "Next",
+                                fontFamily = AppTheme.pixelFontFamily,
+                                fontSize = 16.sp,
+                                color = Color.White
+                            )
+                        }
+                    } else {
+                        Button(
+                            onClick = onDismiss,
+                            colors = ButtonDefaults.buttonColors(containerColor = AppTheme.blueButtonColor)
+                        ) {
+                            Text(
+                                "Finish",
+                                fontFamily = AppTheme.pixelFontFamily,
+                                fontSize = 16.sp,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { }
+    )
+}
+
+@Composable
+private fun DropdownSelectorPreview(
+    label: String,
+    selected: String,
+    options: List<String>
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            label,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            fontFamily = AppTheme.pixelFontFamily
+        )
+        Spacer(Modifier.height(4.dp))
+        Button(
+            onClick = { },
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+        ) {
+            Text(
+                selected,
+                fontSize = 20.sp,
+                color = AppTheme.darkBlueButtonColor,
+                fontFamily = AppTheme.pixelFontFamily
+            )
+        }
+    }
+}
+
+@Composable
+private fun PopupTogglePreview() {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(vertical = 8.dp)
+    ) {
+        Text(
+            "Off/On",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            fontFamily = AppTheme.pixelFontFamily
+        )
+        Spacer(Modifier.height(8.dp))
+        Switch(
+            checked = false,
+            onCheckedChange = { },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = Color(0xFF4B89DC),
+                uncheckedThumbColor = Color.LightGray,
+                uncheckedTrackColor = Color(0xFF444444)
+            )
+        )
+    }
+}
+
+data class TutorialStep(
+    val title: String,
+    val description: String,
+    val showTopicSelector: Boolean = false,
+    val showActivitySelector: Boolean = false,
+    val showIntervalSelector: Boolean = false,
+    val showToggle: Boolean = false
+)

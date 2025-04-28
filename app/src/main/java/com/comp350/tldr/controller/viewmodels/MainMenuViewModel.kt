@@ -39,7 +39,7 @@ class MainMenuViewModel : ViewModel() {
     private val _popupEnabled = MutableStateFlow(false)
     val popupEnabled: StateFlow<Boolean> = _popupEnabled
 
-    val topics = listOf("Python")
+    val topics = listOf("Python","Clean Code")
     val activities = listOf("Trivia", "Video", "Flashcards", "VocabMatch", "Random")
     val intervals = listOf("1m", "5m", "10m", "30m", "1h", "2h")
 
@@ -130,6 +130,7 @@ class MainMenuViewModel : ViewModel() {
                         val intent = Intent(context, com.comp350.tldr.model.services.VocabMatchService::class.java).apply {
                             action = "START_SERVICE"
                             putExtra("interval", intervalMs)
+                            putExtra("topic", _topic.value)
                         }
                         context.startService(intent)
                     }
@@ -137,6 +138,7 @@ class MainMenuViewModel : ViewModel() {
                         val intent = Intent(context, com.comp350.tldr.model.services.RandomService::class.java).apply {
                             action = "START_SERVICE"
                             putExtra("interval", intervalMs)
+                            putExtra("topic", _topic.value)
                         }
                         context.startService(intent)
                     }
