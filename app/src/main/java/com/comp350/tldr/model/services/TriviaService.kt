@@ -94,8 +94,37 @@ class TriviaService : Service() {
                 listOf("Long, descriptive names", "Using single-letter names that require extra mental translation", "Using consistent technical terms", "Using searchable constants"), 1),
 
             Question("When should you use problem domain names?",
-                listOf("When no technical term exists for the concept", "To impress managers", "To make code unreadable to other developers", "To encode types and scopes"), 0)
+                listOf("When no technical term exists for the concept", "To impress managers", "To make code unreadable to other developers", "To encode types and scopes"), 0),
 
+                    Question("What is the first and most important rule for writing functions?",
+        listOf("They must be highly optimized", "They should be long and detailed", "They should be small", "They must use recursion"), 2),
+
+    Question("What does \"Do One Thing\" mean for functions?",
+    listOf("Functions should only use one data type", "Functions should handle both setup and teardown", "Functions should focus on a single task or responsibility", "Functions should process one line of code"), 2),
+
+    Question("What is the Stepdown Rule?",
+    listOf("Each function should be lower performance than the one before", "Code should read top-to-bottom, dropping one level of abstraction at a time", "Code should be indented as much as possible", "Every function must contain a loop"), 1),
+
+    Question("What should you do instead of using switch statements across your code?",
+    listOf("Ignore them", "Use polymorphism to replace them", "Expand them with more cases", "Always return error codes"), 1),
+
+    Question("How many arguments should a function ideally have?",
+    listOf("Three or more", "One or two at most", "Exactly four", "As many as needed"), 1),
+
+    Question("Why are flag arguments considered bad practice?",
+    listOf("They make code faster", "They make code less readable and imply multiple behaviors", "They save memory", "They improve compile times"), 1),
+
+    Question("What is a dangerous side effect of a function?",
+    listOf("Changing unrelated system state without clear intention", "Writing to a log file", "Printing to the console", "Adding extra whitespace"), 0),
+
+    Question("When should you prefer exceptions over returning error codes?",
+    listOf("Only for fatal errors", "When you want to separate happy path logic from error handling", "When you want faster performance", "When memory usage is a concern"), 1),
+
+    Question("What principle does \"Don't Repeat Yourself\" (DRY) target?",
+    listOf("Reducing function arguments", "Preventing duplicate logic in the codebase", "Increasing error handling", "Adding more abstraction layers"), 1),
+
+    Question("How does using descriptive function names help?",
+    listOf("It makes comments unnecessary", "It increases performance", "It reduces the need for refactoring", "It hides the implementation details"), 0),
     )
 
 

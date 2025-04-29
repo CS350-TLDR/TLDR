@@ -95,7 +95,18 @@ class VocabMatchService : Service() {
         "What is the \"Boy Scout Rule\" applied to naming?" to "Leave names cleaner than you found them",
         "When should single-letter variables be used?" to "Only in small local scopes, like short loops",
         "What causes mental mapping problems?" to "Names that require extra mental translation",
-        "When should you use problem domain names?" to "When no technical term exists for the concept"
+        "When should you use problem domain names?" to "When no technical term exists for the concept",
+
+        "What is the most important rule for writing functions?" to "They should be small",
+        "What does \"Do One Thing\" mean for functions?" to "Focus on a single task or responsibility",
+        "What is the Stepdown Rule in code?" to "Code should read top-to-bottom, reducing abstraction level",
+        "What should replace switch statements across code?" to "Use polymorphism instead",
+        "How many arguments should a function ideally have?" to "One or two at most",
+        "Why are flag arguments considered bad practice?" to "They make code less readable and imply multiple behaviors",
+        "What is a dangerous side effect of a function?" to "Changing unrelated system state without clear intention",
+        "When should you prefer exceptions over error codes?" to "To separate happy path logic from error handling",
+        "What principle does DRY target?" to "Preventing duplicate logic in the codebase",
+        "How does using descriptive function names help?" to "It makes comments unnecessary",
     )
 
 
