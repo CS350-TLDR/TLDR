@@ -28,7 +28,6 @@ class DailyStreakManager(private val context: Context) {
                 editor.putInt("current_streak", 1)
                 onComplete(1, calculateReward(1))
             } else {
-                // Already logged in today, no changes
                 onComplete(currentStreak, 0)
             }
         } else if (lastLoginDate == yesterdayStr) {
