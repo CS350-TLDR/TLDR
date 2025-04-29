@@ -22,12 +22,9 @@ class DailyStreakManager(private val context: Context) {
 
         val editor = userPrefs.edit()
 
-        // If first time or login dates match, no changes needed
         if (lastLoginDate.isNullOrEmpty() || lastLoginDate == currentDateStr) {
-            // First login ever or already logged in today
             editor.putString("last_login_date", currentDateStr)
             if (lastLoginDate.isNullOrEmpty()) {
-                // First login ever, set streak to 1
                 editor.putInt("current_streak", 1)
                 onComplete(1, calculateReward(1))
             } else {
@@ -35,13 +32,13 @@ class DailyStreakManager(private val context: Context) {
                 onComplete(currentStreak, 0)
             }
         } else if (lastLoginDate == yesterdayStr) {
-            // Consecutive day login
+            
             val newStreak = currentStreak + 1
             editor.putInt("current_streak", newStreak)
             editor.putString("last_login_date", currentDateStr)
             onComplete(newStreak, calculateReward(newStreak))
         } else {
-            // Streak broken
+          
             editor.putInt("current_streak", 1)
             editor.putString("last_login_date", currentDateStr)
             onComplete(1, calculateReward(1))
@@ -57,7 +54,6 @@ class DailyStreakManager(private val context: Context) {
     }
 
     private fun calculateReward(streakCount: Int): Int {
-        // Base reward of 10 + 5 per day of streak
         return 5 + (streakCount * 5)
     }
 
@@ -68,7 +64,6 @@ class DailyStreakManager(private val context: Context) {
         val currentDateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         val lastRewardDate = userPrefs.getString("last_reward_date", "")
 
-        // Only give reward if not already given today
         if (lastRewardDate != currentDateStr) {
             checkAndUpdateStreak { streak, reward ->
                 if (reward > 0) {
