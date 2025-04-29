@@ -1,5 +1,6 @@
 package com.comp350.tldr.model.services
 
+import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -28,13 +29,14 @@ import kotlinx.coroutines.launch
 import java.util.Timer
 import kotlin.math.abs
 import com.google.firebase.auth.FirebaseAuth
+import java.util.TimerTask
 
 class VocabMatchService : Service() {
     private val serviceIdentifier = "VocabMatchService"
     private lateinit var windowManager: WindowManager
     private val cards = mutableListOf<View>()
     private val cardPairs = mutableMapOf<String, String>()
-    private var vocabCoroutineJob: Job? = null
+    //private var vocabCoroutineJob: Job? = null
     private var pixelFont: Typeface? = null
     private var currentTopic = "Python"
 
@@ -161,7 +163,8 @@ class VocabMatchService : Service() {
         timer?.cancel()
         timer = Timer()
         handler.post { refreshCards() }
-        startVocabScheduler()
+        //startVocabScheduler()
+        startRefreshTimer()
     }
 
     private fun formatIntervalForDisplay(intervalMs: Long): String {
@@ -175,25 +178,39 @@ class VocabMatchService : Service() {
             else -> "${intervalMs / 60000} minutes"
         }
     }
-
-    private fun startVocabScheduler() {
-        vocabCoroutineJob?.cancel()
-        vocabCoroutineJob = CoroutineScope(Dispatchers.Main).launch {
-            Toast.makeText(
-                this@VocabMatchService,
-                "Vocab Match Activated!",
-                Toast.LENGTH_SHORT
-            ).show()
-
-            while (isActive) {
-                if (waitingForNextSet) {
-                    refreshCards()
-                    waitingForNextSet = false
+    private fun startRefreshTimer() {
+        timer?.cancel()
+        timer = Timer()
+        timer?.schedule(object : TimerTask() {
+            override fun run() {
+                Handler(Looper.getMainLooper()).post {
+                    Log.d(serviceIdentifier, "Timer triggered at interval: $intervalMs ms")
+                    if (waitingForNextSet) {
+                        refreshCards()
+                        waitingForNextSet = false
+                    }
                 }
-                delay(intervalMs)
             }
-        }
+        }, intervalMs, intervalMs) // Use the specified interval
     }
+//    private fun startVocabScheduler() {
+//        vocabCoroutineJob?.cancel()
+//        vocabCoroutineJob = CoroutineScope(Dispatchers.Main).launch {
+//            Toast.makeText(
+//                this@VocabMatchService,
+//                "Vocab Match Activated!",
+//                Toast.LENGTH_SHORT
+//            ).show()
+//
+//            while (isActive) {
+//                if (waitingForNextSet) {
+//                    refreshCards()
+//                    waitingForNextSet = false
+//                }
+//                delay(intervalMs)
+//            }
+//        }
+//    }
 
     private fun getQuestionsForTopic(): List<Pair<String, String>> {
         return when (currentTopic) {
@@ -332,6 +349,7 @@ class VocabMatchService : Service() {
         return outerFrame
     }
 
+    @SuppressLint("ResourceType")
     private fun checkForMatch(draggedCard: View) {
         val draggedText = draggedCard.tag as String
         val draggedParams = draggedCard.layoutParams as WindowManager.LayoutParams
@@ -509,6 +527,6 @@ class VocabMatchService : Service() {
         removeAllCards()
         Log.d(serviceIdentifier, "Vocab Match Service destroyed")
         super.onDestroy()
-        vocabCoroutineJob?.cancel()
+        //vocabCoroutineJob?.cancel()
     }
 }

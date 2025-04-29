@@ -168,7 +168,7 @@ class TriviaService : Service() {
             }
         }, 0)
 
-        timer?.scheduleAtFixedRate(object : TimerTask() {
+        timer?.schedule(object : TimerTask() {
             override fun run() {
                 Handler(Looper.getMainLooper()).post {
                     try {

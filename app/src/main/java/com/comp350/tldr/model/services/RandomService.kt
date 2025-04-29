@@ -65,7 +65,7 @@ class RandomService : Service() {
         }, 0)
 
         // Schedule recurring activities
-        timer?.scheduleAtFixedRate(object : TimerTask() {
+        timer?.schedule(object : TimerTask() {
             override fun run() {
                 Handler(Looper.getMainLooper()).post {
                     try {
