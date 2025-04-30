@@ -98,7 +98,6 @@ class VocabMatchService : Service() {
         "When should single-letter variables be used?" to "Only in small local scopes, like short loops",
         "What causes mental mapping problems?" to "Names that require extra mental translation",
         "When should you use problem domain names?" to "When no technical term exists for the concept",
-
         "What is the most important rule for writing functions?" to "They should be small",
         "What does \"Do One Thing\" mean for functions?" to "Focus on a single task or responsibility",
         "What is the Stepdown Rule in code?" to "Code should read top-to-bottom, reducing abstraction level",
@@ -109,6 +108,78 @@ class VocabMatchService : Service() {
         "When should you prefer exceptions over error codes?" to "To separate happy path logic from error handling",
         "What principle does DRY target?" to "Preventing duplicate logic in the codebase",
         "How does using descriptive function names help?" to "It makes comments unnecessary",
+
+        // Chapter 4: Comments
+        "What does the author say is the main problem with comments?" to "They lie as code evolves",
+        "According to the author, what should you do instead of commenting bad code?" to "Rewrite the code",
+        "What type of comment does the author consider acceptable?" to "Legal comments",
+        "Why does the author say that \"comments are always failures\"?" to "They indicate a failure to express yourself in code",
+        "What should you do instead of using a comment to explain confusing code?" to "Make the code so clear it doesn't need comments",
+        "Which of these is described as a good use for comments?" to "Warning of consequences",
+        "What does the author recommend for TODOs?" to "Keep them updated and scan them regularly",
+        "What problem does the author identify with commented-out code?" to "People are afraid to delete it",
+        "What is a \"noise comment\" according to the author?" to "A comment that states the obvious",
+        "What practice should replace the need for many comments according to Clean Code?" to "Better variable naming",
+
+        // Chapter 5: Formatting
+        "What is the main purpose of code formatting according to the author?" to "Communication",
+        "What is the \"newspaper metaphor\" in code formatting?" to "The highest level concepts should be at the top, with details below",
+        "What does vertical openness between concepts help with?" to "Separating unrelated concepts",
+        "What does the author say about horizontal alignment of variable declarations?" to "It's not useful and may highlight the wrong things",
+        "What rule does the author suggest for indentation?" to "The team should agree on a style and be consistent",
+        "According to the author, how big should source files be?" to "Hundreds of lines at most",
+        "How should related concepts be positioned in code?" to "Vertically close to each other",
+        "What is a good practice for variable declarations?" to "Declare them as close to their usage as possible",
+        "Which style convention does the author present as most important?" to "Consistency across the team",
+        "What does the author say about the rules for formatting?" to "They are too important to ignore and too important to treat religiously",
+
+        // Chapter 6: Objects and Data Structures
+        "What is the key difference between objects and data structures?" to "Objects hide data and expose behavior, data structures expose data",
+        "What is the Law of Demeter also known as?" to "Principle of Least Knowledge",
+        "What is a violation of the Law of Demeter?" to "Calling methods on objects returned from other methods",
+        "What does the author call a class that's half object and half data structure?" to "A hybrid",
+        "According to the chapter, what is a DTO?" to "Data Transfer Object: a class with public variables and no functions",
+        "What is the issue with hybrids according to the author?" to "They're the worst of both worlds - hard to add functions and data structures",
+        "What is data abstraction according to the chapter?" to "Hiding implementation behind an interface",
+        "What does the author say about the complementary nature of objects and data structures?" to "Things easy for OO are hard for procedural code and vice versa",
+        "What is an Active Record according to the chapter?" to "A data structure with navigational methods like save and find",
+        "What is the recommended approach to Active Records?" to "Treat them as data structures and create separate objects with business rules",
+
+        // Chapter 7: Error Handling
+        "What approach does the author prefer for handling errors?" to "Exceptions",
+        "What is the recommended approach to writing try-catch-finally blocks?" to "Write them first",
+        "What does the author say about checked exceptions in Java?" to "They violate the Open/Closed Principle",
+        "What should exceptions provide according to the author?" to "Context to determine source and location of error",
+        "What is the Special Case pattern used for?" to "Eliminating the need for special case code",
+        "According to the author, what should you never return from methods?" to "Null",
+        "What is suggested as an alternative to returning null?" to "Both throwing exceptions and returning special case objects",
+        "What does the author suggest about passing null as a parameter?" to "Avoid passing null whenever possible",
+        "What problem does returning null create according to the chapter?" to "It creates extra work and possible errors for callers",
+        "What approach to error handling increases coupling?" to "Using error codes",
+
+        // Chapter 8: Boundaries
+        "What are 'boundaries' in the context of this chapter?" to "Interfaces between our code and third-party code",
+        "What is the tension described at boundaries?" to "Between providers who want general interfaces and users who want specific interfaces",
+        "What does the author recommend when using third-party APIs like Map?" to "Hide them behind your own interfaces",
+        "What are 'learning tests'?" to "Tests that explore and verify our understanding of third-party APIs",
+        "According to the author, why are learning tests worth the effort?" to "They verify third-party code works as expected and flag changes in new versions",
+        "What pattern is suggested for code that doesn't exist yet?" to "Define the interface you wish you had",
+        "What is an Adapter in the context of boundaries?" to "A design pattern to make incompatible interfaces work together",
+        "What benefit does the author mention about creating your own interface?" to "It gives you more control and provides a convenient seam for testing",
+        "What does the author suggest about clean boundaries?" to "Code at boundaries needs clear separation and tests",
+        "According to the chapter, what's better to depend on?" to "Something you control rather than something you don't",
+
+        // Chapter 9: Unit Tests
+        "According to the author, what enables the '-ilities' (maintainability, flexibility, etc.)?" to "Unit tests",
+        "What does the author say is the most important aspect of clean tests?" to "Readability",
+        "What is the BUILD-OPERATE-CHECK pattern in tests?" to "A pattern where tests are split into sections that build data, operate on it, and check results",
+        "What does the author say about the 'one assert per test' rule?" to "It's a good guideline but not an absolute rule",
+        "What does F.I.R.S.T. stand for in the context of clean tests?" to "Fast, Independent, Repeatable, Self-validating, Timely",
+        "Why should tests be fast according to the chapter?" to "So developers will run them frequently",
+        "What does it mean for tests to be independent?" to "They should not depend on each other",
+        "What is a 'domain-specific testing language'?" to "A set of functions and utilities that make tests more convenient to write and read",
+        "According to the author, should test code follow the same quality standards as production code?" to "Yes, with some specific exceptions for efficiency",
+        "What does the author say about the relationship between dirty tests and dirty code?" to "Both B and C"
     )
 
 
