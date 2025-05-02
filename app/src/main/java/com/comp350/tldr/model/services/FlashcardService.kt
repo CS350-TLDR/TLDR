@@ -89,7 +89,7 @@ class FlashcardService : Service() {
         val topic = TextView(this).apply {
             text = "Topic: $currentTopic"
             setTextColor(Color.WHITE)
-            textSize = 25f
+            textSize = 28f
             gravity = Gravity.CENTER
             typeface = pixelFont
             setPadding(0, 10, 0, 30)
@@ -126,7 +126,7 @@ class FlashcardService : Service() {
         val card = FrameLayout(this).apply {
             layoutParams = FrameLayout.LayoutParams(980, 560)
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#3568CC"))
+                setColor(Color.parseColor("#4B89DC"))
                 cornerRadius = 40f
                 setStroke(4, Color.DKGRAY)
             }
@@ -142,7 +142,7 @@ class FlashcardService : Service() {
 
         val cardBack = TextView(this).apply {
             text = "Answer: ${question.options[question.correctAnswerIndex]}"
-            setTextColor(Color.DKGRAY)
+            setTextColor(Color.BLACK)
             textSize = 22f
             gravity = Gravity.CENTER
             setPadding(60, 40, 60, 40)
