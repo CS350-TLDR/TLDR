@@ -175,7 +175,7 @@ class FlashcardService : Service() {
             textSize = 42f
             typeface = pixelFont
             layoutParams = buttonParams
-            setPadding(0, -35, 0, 0) // Visually raise the arrow
+            setPadding(0, -35, 0, 0)
             gravity = Gravity.CENTER
             setOnClickListener {
                 currentQuestionIndex = (currentQuestionIndex - 1 + currentQuestions.size) % currentQuestions.size
@@ -214,7 +214,7 @@ class FlashcardService : Service() {
             setTextColor(Color.WHITE)
             background = GradientDrawable().apply {
                 setColor(Color.DKGRAY)
-                cornerRadius = 40f // Rounded corners
+                cornerRadius = 40f
             }
             setOnClickListener { removeAllViews() }
         }
