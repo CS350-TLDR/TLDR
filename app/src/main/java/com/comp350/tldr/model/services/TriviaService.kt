@@ -111,12 +111,10 @@ class TriviaService : Service() {
         floatingView = quizView
         addOverlay(floatingView!!)
 
-        // Wait until the quiz layout is laid out so we can place the Close button properly
         floatingView!!.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
             override fun onGlobalLayout() {
                 floatingView!!.viewTreeObserver.removeOnGlobalLayoutListener(this)
 
-                // Now we know the height of the quiz overlay, so we can position the Close button below it
                 closeButtonView = Button(this@TriviaService).apply {
                     text = "Close"
                     background = createRoundedBackground(blueColor)
@@ -185,7 +183,7 @@ class TriviaService : Service() {
         return View(this).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                2  // Height of the divider in pixels
+                2
             ).apply {
                 setMargins(0, 16, 0, 16)
             }
