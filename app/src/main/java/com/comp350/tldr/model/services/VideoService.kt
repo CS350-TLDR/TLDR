@@ -6,10 +6,12 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.*
 import android.view.*
 import android.widget.*
+import androidx.core.content.res.ResourcesCompat
 import com.comp350.tldr.R
 import com.google.firebase.auth.FirebaseAuth
 import java.util.*
@@ -20,6 +22,7 @@ class VideoService : Service() {
     private var videoView: View? = null
     private var timer: Timer? = null
     private var videoViewComponent: VideoView? = null
+    private var mediaController: MediaController? = null
 
     private lateinit var auth: FirebaseAuth
     private lateinit var sharedPrefs: android.content.SharedPreferences
@@ -88,74 +91,105 @@ class VideoService : Service() {
         }
     }
 
-    private fun createVideoLayout(): View {
-        val frameLayout = FrameLayout(this)
+    private fun createRoundedBackground(colorHex: String): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 32f
+            setColor(Color.parseColor(colorHex))
+        }
+    }
 
-        val video = VideoView(this).apply {
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
+    private fun createVideoLayout(): View {
+        val context = this
+
+        val outerLayout = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.parseColor("#4B89DC"))
+            outlineProvider = ViewOutlineProvider.BACKGROUND
+            clipToOutline = true
+            setPadding(48, 32, 48, 32)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
             )
         }
 
-        videoViewComponent = video
+        val topicText = TextView(context).apply {
+            text = currentTopic
+            setTextColor(Color.WHITE)
+            textSize = 20f
+            typeface = ResourcesCompat.getFont(context, R.font.rainyhearts)
+            setShadowLayer(4f, 2f, 2f, Color.BLACK)
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = 16
+            }
+        }
+
+        videoViewComponent = VideoView(context).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        mediaController = MediaController(context)
+        videoViewComponent?.setMediaController(mediaController)
+
+        val closeButton = TextView(context).apply {
+            text = "X"
+            textSize = 20f
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.TRANSPARENT)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.END
+                topMargin = 16
+            }
+            setOnClickListener { removeVideoView() }
+        }
+
+        outerLayout.addView(topicText)
+        outerLayout.addView(videoViewComponent)
+        outerLayout.addView(closeButton)
 
         try {
             val videoResIds = getVideoResources()
             val randomVideoResId = videoResIds.random()
             val videoUri = Uri.parse("android.resource://$packageName/$randomVideoResId")
+            videoViewComponent?.setVideoURI(videoUri)
 
-            video.setVideoURI(videoUri)
-            video.setMediaController(MediaController(this).apply {
-                setAnchorView(video)
-            })
+            videoViewComponent?.setOnPreparedListener {
+                videoViewComponent?.viewTreeObserver?.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+                    override fun onGlobalLayout() {
+                        videoViewComponent?.viewTreeObserver?.removeOnGlobalLayoutListener(this)
+                        mediaController?.setAnchorView(videoViewComponent)
+                        mediaController?.show(0)
+                    }
+                })
+                videoViewComponent?.start()
+            }
 
-            video.setOnCompletionListener {
+            videoViewComponent?.setOnCompletionListener {
                 gears++
                 saveGears()
                 removeVideoView()
             }
+
         } catch (e: Exception) {
+            e.printStackTrace()
         }
 
-        frameLayout.addView(video)
-
-
-        val closeButton = TextView(this).apply {
-            text = "X"
-            textSize = 20f
-            setTextColor(Color.WHITE)
-            setBackgroundColor(Color.TRANSPARENT)
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                gravity = Gravity.TOP or Gravity.END
-                setMargins(0, 8, 16, 0)
-            }
-            setPadding(8, 0, 8, 0)
-            setOnClickListener { removeVideoView() }
-        }
-
-        frameLayout.addView(closeButton)
-
-
-        val resizeHandle = View(this).apply {
-
-            setBackgroundColor(Color.TRANSPARENT)
-            layoutParams = FrameLayout.LayoutParams(60, 60).apply {
-                gravity = Gravity.BOTTOM or Gravity.END
-                setMargins(0, 0, 0, 0)
-            }
-        }
-
-        frameLayout.addView(resizeHandle)
-
-        frameLayout.setOnTouchListener(createTouchListener(frameLayout))
-        resizeHandle.setOnTouchListener(createResizeListener(frameLayout))
-
-        return frameLayout
+        outerLayout.setOnTouchListener(createTouchListener(outerLayout))
+        return outerLayout
     }
+
+
 
     @SuppressLint("ClickableViewAccessibility")
     private fun createResizeListener(view: View): View.OnTouchListener {
@@ -262,8 +296,8 @@ class VideoService : Service() {
         val screenHeight = displayMetrics.heightPixels
 
         val params = WindowManager.LayoutParams(
-            screenWidth / 2,
-            screenHeight / 2,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
@@ -273,14 +307,18 @@ class VideoService : Service() {
             y = 100
         }
 
+
         windowManager.addView(videoView, params)
 
         Handler(Looper.getMainLooper()).postDelayed({
             try {
                 videoViewComponent?.start()
+                mediaController?.show(0) // ✅ show it manually
             } catch (e: Exception) {
             }
         }, 500)
+
+
     }
 
     private fun loadGears() {
