@@ -114,13 +114,8 @@ class VideoService : Service() {
             )
         }
 
-        val topicText = TextView(context).apply {
-            text = currentTopic
-            setTextColor(Color.WHITE)
-            textSize = 20f
-            typeface = ResourcesCompat.getFont(context, R.font.rainyhearts)
-            setShadowLayer(4f, 2f, 2f, Color.BLACK)
-            gravity = Gravity.CENTER
+        // Header layout for topic and X button
+        val headerLayout = FrameLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -129,6 +124,40 @@ class VideoService : Service() {
             }
         }
 
+        val topicText = TextView(context).apply {
+            text = currentTopic
+            setTextColor(Color.WHITE)
+            textSize = 20f
+            typeface = ResourcesCompat.getFont(context, R.font.rainyhearts)
+            setShadowLayer(4f, 2f, 2f, Color.BLACK)
+            gravity = Gravity.CENTER
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.CENTER
+            }
+        }
+
+        val closeButton = TextView(context).apply {
+            text = "X"
+            textSize = 20f
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.TRANSPARENT)
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.END or Gravity.CENTER_VERTICAL
+                setMargins(0, 0, 16, 0)
+            }
+            setOnClickListener { removeVideoView() }
+        }
+
+        headerLayout.addView(topicText)
+        headerLayout.addView(closeButton)
+
+        // Video view and media controller
         videoViewComponent = VideoView(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -139,24 +168,8 @@ class VideoService : Service() {
         mediaController = MediaController(context)
         videoViewComponent?.setMediaController(mediaController)
 
-        val closeButton = TextView(context).apply {
-            text = "X"
-            textSize = 20f
-            setTextColor(Color.WHITE)
-            setBackgroundColor(Color.TRANSPARENT)
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                gravity = Gravity.END
-                topMargin = 16
-            }
-            setOnClickListener { removeVideoView() }
-        }
-
-        outerLayout.addView(topicText)
+        outerLayout.addView(headerLayout)
         outerLayout.addView(videoViewComponent)
-        outerLayout.addView(closeButton)
 
         try {
             val videoResIds = getVideoResources()
@@ -180,7 +193,6 @@ class VideoService : Service() {
                 saveGears()
                 removeVideoView()
             }
-
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -188,8 +200,6 @@ class VideoService : Service() {
         outerLayout.setOnTouchListener(createTouchListener(outerLayout))
         return outerLayout
     }
-
-
 
     @SuppressLint("ClickableViewAccessibility")
     private fun createResizeListener(view: View): View.OnTouchListener {
