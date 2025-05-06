@@ -358,9 +358,12 @@ class VocabMatchService : Service() {
                 val draggedInner = draggedCard.findViewById<FrameLayout>(1001)
                 val targetInner = card.findViewById<FrameLayout>(1001)
 
+                val draggedDrawable = draggedInner?.background as? GradientDrawable
+                val targetDrawable = targetInner?.background as? GradientDrawable
+
                 if (isMatch) {
-                    draggedInner?.setBackgroundColor(Color.GREEN)
-                    targetInner?.setBackgroundColor(Color.GREEN)
+                    draggedDrawable?.setColor(Color.GREEN)
+                    targetDrawable?.setColor(Color.GREEN)
                     correctMatches.add(draggedText)
                     correctMatches.add(targetText)
                     matchedCards.add(draggedCard)
@@ -387,14 +390,15 @@ class VocabMatchService : Service() {
                         }
                     }, 500)
                 } else {
-                    draggedInner?.setBackgroundColor(Color.RED)
-                    targetInner?.setBackgroundColor(Color.RED)
+                    // Keep rounded corners and just update the drawable's color
+                    draggedDrawable?.setColor(Color.RED)
+                    targetDrawable?.setColor(Color.RED)
 
                     Toast.makeText(this, "Incorrect Match", Toast.LENGTH_SHORT).show()
 
                     handler.postDelayed({
-                        draggedInner?.setBackgroundColor(Color.parseColor("#4B89DC"))
-                        targetInner?.setBackgroundColor(Color.parseColor("#4B89DC"))
+                        draggedDrawable?.setColor(Color.parseColor("#4B89DC"))
+                        targetDrawable?.setColor(Color.parseColor("#4B89DC"))
                     }, 500)
                 }
 
@@ -402,6 +406,7 @@ class VocabMatchService : Service() {
             }
         }
     }
+
 
     private fun showGearPopup(earned: Int) {
 
