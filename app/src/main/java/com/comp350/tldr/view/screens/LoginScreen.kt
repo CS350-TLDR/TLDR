@@ -1,5 +1,6 @@
 package com.comp350.tldr.view.screens
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -15,6 +16,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.navigation.NavController
 import com.comp350.tldr.controller.navigation.NavigationController
 import com.comp350.tldr.controller.viewmodels.LoginViewModel
@@ -35,6 +39,25 @@ fun LoginScreen(navController: NavController) {
     val errorMessage by loginViewModel.errorMessage.collectAsState()
     val isLoading by loginViewModel.isLoading.collectAsState()
     val savedEmails by loginViewModel.savedEmails.collectAsState()
+
+    val audioPlayer = ExoPlayer.Builder(navController.context).build()
+    audioPlayer.volume = 1.0f
+    var mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/test_sound_b")
+    audioPlayer.setMediaItem(mediaItem)
+    audioPlayer.prepare()
+
+    var audioExit = false
+    // Set up a listener for the STATE_ENDED,
+    // frees resources after completing sound and exiting screen.
+    audioPlayer.addListener(object : Player.Listener {
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_ENDED && audioExit) {
+                Log.d("ExoPlayer", "Login Playback finished")
+                audioPlayer.release()
+            }
+        }
+    })
+
 
     // for forgot password
     var showResetDialog by remember { mutableStateOf(false) }
@@ -83,7 +106,19 @@ fun LoginScreen(navController: NavController) {
                     coroutineScope.launch {
                         loginViewModel.login(context) { success ->
                             if (success) {
+                                mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/login_sound")
+                                audioPlayer.setMediaItem(mediaItem)
+                                audioPlayer.prepare() // restart the player
+                                audioPlayer.play()
+                                audioExit = true
                                 navigationController.navigateToMainMenu()
+                            }
+                            else {
+                                mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/wrong_sound")
+                                audioPlayer.setMediaItem(mediaItem)
+                                audioPlayer.prepare() // restart the player
+                                audioPlayer.play()
+                                audioExit = false
                             }
                         }
                     }
@@ -94,7 +129,7 @@ fun LoginScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            SignupNavigationButton(navigationController)
+            SignupNavigationButton(navController,navigationController)
 
             TextButton(onClick = { showResetDialog = true }) {
                 TextButton(onClick = { showResetDialog = true }) {
@@ -280,9 +315,37 @@ private fun ErrorMessageDisplay(errorMessage: String?) {
 }
 
 @Composable
-private fun SignupNavigationButton(navigationController: NavigationController) {
+fun SignupNavigationButton(
+    navController: NavController, // Add NavController as a parameter for audio playback
+    navigationController: NavigationController
+) {
+
+    val audioPlayer = ExoPlayer.Builder(navController.context).build()
+    audioPlayer.volume = 1.0f
+    var mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/test_sound_b")
+    audioPlayer.setMediaItem(mediaItem)
+    audioPlayer.prepare()
+
+    var audioExit = false
+    // Set up a listener for the STATE_ENDED,
+    // frees resources after completing sound and exiting screen.
+    audioPlayer.addListener(object : Player.Listener {
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_ENDED && audioExit) {
+                Log.d("ExoPlayer", "Login 2 Playback finished")
+                audioPlayer.release()
+            }
+        }
+    })
+
     TextButton(
         onClick = {
+            mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/click_sound_c")
+            audioPlayer.setMediaItem(mediaItem)
+            audioPlayer.prepare() // restart the player
+            audioPlayer.play()
+            audioExit = true
+
             navigationController.navigateToSignup()
         }
     ) {

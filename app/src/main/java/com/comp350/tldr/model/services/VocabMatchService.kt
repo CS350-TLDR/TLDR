@@ -1,12 +1,10 @@
 package com.comp350.tldr.model.services
 
-import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
-import android.graphics.Rect
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
@@ -23,14 +21,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import com.comp350.tldr.R
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import java.util.Timer
-import kotlin.math.abs
 import com.google.firebase.auth.FirebaseAuth
 import java.util.TimerTask
 
@@ -39,16 +30,13 @@ class VocabMatchService : Service() {
     private lateinit var windowManager: WindowManager
     private val cards = mutableListOf<View>()
     private val cardPairs = mutableMapOf<String, String>()
-    //private var vocabCoroutineJob: Job? = null
     private var pixelFont: Typeface? = null
     private var currentTopic = "Python"
 
     private lateinit var auth: FirebaseAuth
     private lateinit var sharedPrefs: android.content.SharedPreferences
     private var gears = 0
-
     private var backgroundView: View? = null
-
 
     private val correctMatches = mutableSetOf<String>()
     private val matchedCards = mutableSetOf<View>()
@@ -101,21 +89,10 @@ class VocabMatchService : Service() {
         timer?.cancel()
         timer = Timer()
         handler.post { refreshCards() }
-        //startVocabScheduler()
+
         startRefreshTimer()
     }
 
-    private fun formatIntervalForDisplay(intervalMs: Long): String {
-        return when (intervalMs) {
-            60000L -> "1 minute"
-            300000L -> "5 minutes"
-            600000L -> "10 minutes"
-            1800000L -> "30 minutes"
-            3600000L -> "1 hour"
-            7200000L -> "2 hours"
-            else -> "${intervalMs / 60000} minutes"
-        }
-    }
     private fun startRefreshTimer() {
         timer?.cancel()
         timer = Timer()
@@ -131,24 +108,7 @@ class VocabMatchService : Service() {
             }
         }, intervalMs, intervalMs) // Use the specified interval
     }
-//    private fun startVocabScheduler() {
-//        vocabCoroutineJob?.cancel()
-//        vocabCoroutineJob = CoroutineScope(Dispatchers.Main).launch {
-//            Toast.makeText(
-//                this@VocabMatchService,
-//                "Vocab Match Activated!",
-//                Toast.LENGTH_SHORT
-//            ).show()
-//
-//            while (isActive) {
-//                if (waitingForNextSet) {
-//                    refreshCards()
-//                    waitingForNextSet = false
-//                }
-//                delay(intervalMs)
-//            }
-//        }
-//    }
+
 
     private fun getQuestionsForTopic(): List<Pair<String, String>> {
         return when (currentTopic) {
@@ -543,7 +503,6 @@ class VocabMatchService : Service() {
         removeAllCards()
         Log.d(serviceIdentifier, "Vocab Match Service destroyed")
         super.onDestroy()
-        //vocabCoroutineJob?.cancel()
     }
 
     private val samplePythonQuestions = listOf(
