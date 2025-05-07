@@ -32,6 +32,10 @@ class FlashcardService : Service() {
     private var intervalMs: Long = 60000
     private var pixelFont: Typeface? = null
 
+    // Window dimensions scaled to 2/3 of original size
+    private val windowWidth = 693  // Original was 1040
+    private val windowHeight = 587 // Original was 880
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -80,19 +84,19 @@ class FlashcardService : Service() {
             gravity = Gravity.CENTER_HORIZONTAL
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#2E2E2E"))
-                cornerRadius = 60f
+                cornerRadius = 40f  // Scaled from 60f
             }
-            layoutParams = LinearLayout.LayoutParams(1040, 880)
-            setPadding(0, 30, 0, 30)
+            layoutParams = LinearLayout.LayoutParams(windowWidth, windowHeight)
+            setPadding(0, 20, 0, 20)  // Scaled from 30
         }
 
         val topic = TextView(this).apply {
             text = "Topic: $currentTopic"
             setTextColor(Color.WHITE)
-            textSize = 28f
+            textSize = 19f  // Scaled from 28f
             gravity = Gravity.CENTER
             typeface = pixelFont
-            setPadding(0, 10, 0, 30)
+            setPadding(0, 7, 0, 20)  // Scaled from 10, 0, 30
         }
         layout.addView(topic)
         topicTextView = topic
@@ -104,9 +108,34 @@ class FlashcardService : Service() {
         val arrows = createNavigationArrows()
         layout.addView(arrows)
 
+        // Add Clear button at the bottom of the main layout
+        val clearButton = Button(this).apply {
+            text = "Clear"
+            textSize = 11f  // Scaled from 16f
+            typeface = pixelFont
+            setTextColor(Color.WHITE)
+            background = GradientDrawable().apply {
+                setColor(Color.DKGRAY)
+                cornerRadius = 27f  // Scaled from 40f
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.CENTER
+                topMargin = 20  // Add some space above the button
+            }
+            setOnClickListener { removeAllViews() }
+        }
+        layout.addView(clearButton)
+        clearButtonView = clearButton
+
+        // Add drag capability
+        setupDragBehavior(layout)
+
         val params = WindowManager.LayoutParams(
-            1040,
-            880,
+            windowWidth,
+            WindowManager.LayoutParams.WRAP_CONTENT,  // Allow height to adjust to content
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
@@ -117,35 +146,68 @@ class FlashcardService : Service() {
 
         windowManager.addView(layout, params)
         backgroundView = layout
-        showClearButton()
+    }
+
+    private fun setupDragBehavior(view: View) {
+        var lastX = 0
+        var lastY = 0
+
+        view.setOnTouchListener { v, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    lastX = event.rawX.toInt()
+                    lastY = event.rawY.toInt()
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val params = v.layoutParams as WindowManager.LayoutParams
+                    val dx = event.rawX.toInt() - lastX
+                    val dy = event.rawY.toInt() - lastY
+
+                    params.x += dx
+                    params.y += dy
+
+                    lastX = event.rawX.toInt()
+                    lastY = event.rawY.toInt()
+
+                    windowManager.updateViewLayout(v, params)
+                    true
+                }
+                else -> false
+            }
+        }
     }
 
     private fun createFlashcardView(index: Int): View {
         val question = currentQuestions[index % currentQuestions.size]
 
+        // Scale card size to 2/3 of original
+        val cardWidth = 653  // Scaled from 980
+        val cardHeight = 373 // Scaled from 560
+
         val card = FrameLayout(this).apply {
-            layoutParams = FrameLayout.LayoutParams(980, 560)
+            layoutParams = FrameLayout.LayoutParams(cardWidth, cardHeight)
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#4B89DC"))
-                cornerRadius = 40f
-                setStroke(4, Color.DKGRAY)
+                cornerRadius = 27f  // Scaled from 40f
+                setStroke(3, Color.DKGRAY)  // Scaled from 4
             }
         }
 
         val cardFront = TextView(this).apply {
             text = question.text
             setTextColor(Color.BLACK)
-            textSize = 22f
+            textSize = 15f  // Scaled from 22f
             gravity = Gravity.CENTER
-            setPadding(60, 40, 60, 40)
+            setPadding(40, 27, 40, 27)  // Scaled from 60, 40, 60, 40
         }
 
         val cardBack = TextView(this).apply {
             text = "Answer: ${question.options[question.correctAnswerIndex]}"
             setTextColor(Color.BLACK)
-            textSize = 22f
+            textSize = 15f  // Scaled from 22f
             gravity = Gravity.CENTER
-            setPadding(60, 40, 60, 40)
+            setPadding(40, 27, 40, 27)  // Scaled from 60, 40, 60, 40
             visibility = View.GONE
         }
 
@@ -160,22 +222,23 @@ class FlashcardService : Service() {
 
         return card
     }
+
     private fun createNavigationArrows(): View {
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
 
-        val buttonParams = LinearLayout.LayoutParams(220, 140).apply {
-            setMargins(40, 20, 40, 20)
+        val buttonParams = LinearLayout.LayoutParams(147, 93).apply {  // Scaled from 220, 140
+            setMargins(27, 13, 27, 13)  // Scaled from 40, 20, 40, 20
         }
 
         val leftArrow = Button(this).apply {
             text = "←"
-            textSize = 42f
+            textSize = 28f  // Scaled from 42f
             typeface = pixelFont
             layoutParams = buttonParams
-            setPadding(0, -35, 0, 0)
+            setPadding(0, -23, 0, 0)  // Scaled from 0, -35, 0, 0
             gravity = Gravity.CENTER
             setOnClickListener {
                 currentQuestionIndex = (currentQuestionIndex - 1 + currentQuestions.size) % currentQuestions.size
@@ -187,10 +250,10 @@ class FlashcardService : Service() {
 
         val rightArrow = Button(this).apply {
             text = "→"
-            textSize = 42f
+            textSize = 28f  // Scaled from 42f
             typeface = pixelFont
             layoutParams = buttonParams
-            setPadding(0, -35, 0, 0)
+            setPadding(0, -23, 0, 0)  // Scaled from 0, -35, 0, 0
             gravity = Gravity.CENTER
             setOnClickListener {
                 currentQuestionIndex = (currentQuestionIndex + 1) % currentQuestions.size
@@ -206,42 +269,13 @@ class FlashcardService : Service() {
         return container
     }
 
-    private fun showClearButton() {
-        val button = Button(this).apply {
-            text = "Clear"
-            textSize = 16f
-            typeface = pixelFont
-            setTextColor(Color.WHITE)
-            background = GradientDrawable().apply {
-                setColor(Color.DKGRAY)
-                cornerRadius = 40f
-            }
-            setOnClickListener { removeAllViews() }
-        }
-
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.CENTER_HORIZONTAL or Gravity.TOP
-            y = 1040
-        }
-
-        windowManager.addView(button, params)
-        clearButtonView = button
-    }
-
     private fun removeAllViews() {
         backgroundView?.let { try { windowManager.removeView(it) } catch (_: Exception) {} }
-        clearButtonView?.let { try { windowManager.removeView(it) } catch (_: Exception) {} }
         backgroundView = null
-        clearButtonView = null
         flashcardView = null
         arrowContainer = null
         topicTextView = null
+        clearButtonView = null
     }
 
     override fun onDestroy() {
@@ -265,7 +299,6 @@ class FlashcardService : Service() {
         Question("How do you add an element to a list?", listOf("my_list.append(element)", "my_list.add(element)", "my_list.insert(element)", "my_list.push(element)"), 0),
         Question("What symbol is used for comments in Python?", listOf("#", "//", "/*", "<!-->"), 0),
         Question("Which data type is immutable?", listOf("Tuple", "List", "Dictionary", "Set"), 0)
-
     )
 
     private val cleanCodeQuestions = listOf(
@@ -463,5 +496,3 @@ class FlashcardService : Service() {
             listOf("There is no relationship", "Dirty tests lead to dirty code", "Dirty code leads to dirty tests", "Both B and C"), 3)
     )
 }
-
-
