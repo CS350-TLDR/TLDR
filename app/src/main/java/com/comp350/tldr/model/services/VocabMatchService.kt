@@ -6,7 +6,9 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Rect
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -20,6 +22,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import com.comp350.tldr.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -43,6 +46,505 @@ class VocabMatchService : Service() {
     private lateinit var auth: FirebaseAuth
     private lateinit var sharedPrefs: android.content.SharedPreferences
     private var gears = 0
+
+    private var backgroundView: View? = null
+
+
+    private val correctMatches = mutableSetOf<String>()
+    private val matchedCards = mutableSetOf<View>()
+    private var intervalMs: Long = 60000L
+    private var timer: Timer? = null
+    private var waitingForNextSet = false
+    private val handler = Handler(Looper.getMainLooper())
+    private var gearsEarned = 0
+    private var totalPairs = 0
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        Log.d(serviceIdentifier, "VocabMatchService created")
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+
+        auth = FirebaseAuth.getInstance()
+        sharedPrefs = getSharedPreferences("tldr_prefs", Context.MODE_PRIVATE)
+        loadGears()
+
+        try {
+            pixelFont = resources.getFont(resources.getIdentifier("rainyhearts", "font", packageName))
+            Log.d(serviceIdentifier, "Pixel font loaded successfully")
+        } catch (e: Exception) {
+            Log.e(serviceIdentifier, "Failed to load pixel font", e)
+        }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        intent ?: return START_NOT_STICKY
+
+        when (intent.action) {
+            "START_SERVICE" -> handleStart(intent)
+            "STOP_SERVICE" -> stopSelf()
+            "SHOW_NOW" -> {
+                Log.d(serviceIdentifier, "SHOW_NOW action received - showing cards immediately")
+                Toast.makeText(this, "Showing VocabMatch cards now", Toast.LENGTH_SHORT).show()
+                refreshCards()
+            }
+        }
+
+        return START_NOT_STICKY
+    }
+
+    private fun handleStart(intent: Intent) {
+        intervalMs = intent.getLongExtra("interval", 60000L)
+        currentTopic = intent.getStringExtra("topic") ?: "Python"
+
+        timer?.cancel()
+        timer = Timer()
+        handler.post { refreshCards() }
+        //startVocabScheduler()
+        startRefreshTimer()
+    }
+
+    private fun formatIntervalForDisplay(intervalMs: Long): String {
+        return when (intervalMs) {
+            60000L -> "1 minute"
+            300000L -> "5 minutes"
+            600000L -> "10 minutes"
+            1800000L -> "30 minutes"
+            3600000L -> "1 hour"
+            7200000L -> "2 hours"
+            else -> "${intervalMs / 60000} minutes"
+        }
+    }
+    private fun startRefreshTimer() {
+        timer?.cancel()
+        timer = Timer()
+        timer?.schedule(object : TimerTask() {
+            override fun run() {
+                Handler(Looper.getMainLooper()).post {
+                    Log.d(serviceIdentifier, "Timer triggered at interval: $intervalMs ms")
+                    if (waitingForNextSet) {
+                        refreshCards()
+                        waitingForNextSet = false
+                    }
+                }
+            }
+        }, intervalMs, intervalMs) // Use the specified interval
+    }
+//    private fun startVocabScheduler() {
+//        vocabCoroutineJob?.cancel()
+//        vocabCoroutineJob = CoroutineScope(Dispatchers.Main).launch {
+//            Toast.makeText(
+//                this@VocabMatchService,
+//                "Vocab Match Activated!",
+//                Toast.LENGTH_SHORT
+//            ).show()
+//
+//            while (isActive) {
+//                if (waitingForNextSet) {
+//                    refreshCards()
+//                    waitingForNextSet = false
+//                }
+//                delay(intervalMs)
+//            }
+//        }
+//    }
+
+    private fun getQuestionsForTopic(): List<Pair<String, String>> {
+        return when (currentTopic) {
+            "Clean Code" -> cleanCodeQuestions
+            else -> samplePythonQuestions
+        }
+    }
+
+    private fun refreshCards() {
+        removeAllCards()
+        correctMatches.clear()
+        matchedCards.clear()
+        gearsEarned = 0
+
+        showBackgroundLayer()
+
+        val questionList = getQuestionsForTopic()
+        val shuffled = questionList.shuffled().take(4)
+        val questions = shuffled.map { it.first }
+        val answers = shuffled.map { it.second }
+        val allItems = (questions + answers).shuffled()
+        val screenWidth = resources.displayMetrics.widthPixels
+
+        totalPairs = shuffled.size
+
+        allItems.forEachIndexed { index, label ->
+            val card = createCard(label)
+            val isLeft = index % 2 == 0
+            val x = if (isLeft) screenWidth / 10 else screenWidth * 6 / 10
+            val y = 300 + (index * 200) + if (isLeft) -50 else 50
+            addCard(card, x, y)
+        }
+
+        cardPairs.clear()
+        shuffled.forEach { (q, a) -> cardPairs[q] = a }
+
+        showClearButton()
+    }
+
+    private fun showClearButton() {
+        val button = Button(this).apply {
+            text = "Clear"
+            textSize = 16f
+            setPadding(8, 4, 8, 4)
+
+            // Apply pixel font if available
+            pixelFont?.let { typeface = it }
+
+
+
+            setOnClickListener {
+                removeAllCards()
+                Toast.makeText(this@VocabMatchService, "Cards cleared", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.BOTTOM or Gravity.END
+            x = 30
+            y = 30
+        }
+
+        try {
+            windowManager.addView(button, params)
+            cards.add(button)
+        } catch (e: Exception) {
+            Log.e(serviceIdentifier, "Error showing clear button", e)
+        }
+    }
+
+    private val dragTouchListener = View.OnTouchListener { v, event ->
+        if (matchedCards.contains(v)) return@OnTouchListener false
+
+        val params = v.layoutParams as WindowManager.LayoutParams
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                v.setTag(R.id.initial_x, params.x)
+                v.setTag(R.id.initial_y, params.y)
+                v.setTag(R.id.touch_x, event.rawX)
+                v.setTag(R.id.touch_y, event.rawY)
+                true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val initialX = v.getTag(R.id.initial_x) as Int
+                val initialY = v.getTag(R.id.initial_y) as Int
+                val touchX = v.getTag(R.id.touch_x) as Float
+                val touchY = v.getTag(R.id.touch_y) as Float
+
+                params.x = initialX + (event.rawX - touchX).toInt()
+                params.y = initialY + (event.rawY - touchY).toInt()
+                windowManager.updateViewLayout(v, params)
+                true
+            }
+            MotionEvent.ACTION_UP -> {
+                checkForMatch(v)
+                true
+            }
+            else -> false
+        }
+    }
+
+
+    private fun createCard(label: String): View {
+        val cardWidth = 500  // consistent width in pixels
+        val cardHeight = 200 // consistent height in pixels
+
+        val outerFrame = FrameLayout(this).apply {
+            setPadding(6, 6, 6, 6)
+            tag = label
+            layoutParams = FrameLayout.LayoutParams(cardWidth, cardHeight)
+        }
+
+        val roundedBackground = GradientDrawable().apply {
+            setColor(Color.parseColor("#4B89DC"))
+            cornerRadius = 32f
+        }
+
+        val innerFrame = FrameLayout(this).apply {
+            background = roundedBackground
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+            id = 1001
+        }
+
+        val textView = TextView(this).apply {
+            text = label
+            setTextColor(Color.WHITE)
+            textSize = 20f
+            setPadding(16, 16, 16, 16)
+            gravity = Gravity.CENTER
+            setLineSpacing(0f, 1.2f)
+            pixelFont?.let { typeface = it }
+        }
+
+        innerFrame.addView(textView)
+        outerFrame.addView(innerFrame)
+        outerFrame.setOnTouchListener(dragTouchListener)
+        return outerFrame
+    }
+
+
+    private fun showBackgroundLayer() {
+        val screenWidth = resources.displayMetrics.widthPixels
+        val screenHeight = resources.displayMetrics.heightPixels
+
+        val drawable = GradientDrawable().apply {
+            setColor(Color.parseColor("#AA000000")) // Semi-transparent black
+            cornerRadius = 48f // Adjust as needed for roundness
+        }
+
+        backgroundView = FrameLayout(this).apply {
+            background = drawable
+        }
+
+        val params = WindowManager.LayoutParams(
+            screenWidth,
+            screenHeight,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+        }
+
+        try {
+            windowManager.addView(backgroundView, params)
+        } catch (e: Exception) {
+            Log.e(serviceIdentifier, "Error showing background layer", e)
+        }
+    }
+
+
+    private fun checkForMatch(draggedCard: View) {
+        val draggedParams = draggedCard.layoutParams as WindowManager.LayoutParams
+        val draggedLeft = draggedParams.x
+        val draggedTop = draggedParams.y
+        val draggedRight = draggedLeft + draggedCard.width
+        val draggedBottom = draggedTop + draggedCard.height
+
+        for (card in cards) {
+            if (card == draggedCard || matchedCards.contains(card)) continue
+
+            val targetParams = card.layoutParams as WindowManager.LayoutParams
+            val targetLeft = targetParams.x
+            val targetTop = targetParams.y
+            val targetRight = targetLeft + card.width
+            val targetBottom = targetTop + card.height
+
+            val intersects = draggedRight > targetLeft &&
+                    draggedLeft < targetRight &&
+                    draggedBottom > targetTop &&
+                    draggedTop < targetBottom
+
+            if (intersects) {
+                val draggedText = draggedCard.tag as String
+                val targetText = card.tag as String
+                val isMatch = cardPairs[draggedText] == targetText || cardPairs[targetText] == draggedText
+
+                val draggedInner = draggedCard.findViewById<FrameLayout>(1001)
+                val targetInner = card.findViewById<FrameLayout>(1001)
+
+                val draggedDrawable = draggedInner?.background as? GradientDrawable
+                val targetDrawable = targetInner?.background as? GradientDrawable
+
+                if (isMatch) {
+                    draggedDrawable?.setColor(Color.GREEN)
+                    targetDrawable?.setColor(Color.GREEN)
+                    correctMatches.add(draggedText)
+                    correctMatches.add(targetText)
+                    matchedCards.add(draggedCard)
+                    matchedCards.add(card)
+                    gears++
+                    gearsEarned++
+                    saveGears()
+
+                    Toast.makeText(this, "Correct Match! (+1 Gear)", Toast.LENGTH_SHORT).show()
+
+                    handler.postDelayed({
+                        try {
+                            windowManager.removeView(draggedCard)
+                            windowManager.removeView(card)
+                            cards.remove(draggedCard)
+                            cards.remove(card)
+
+                            if (correctMatches.size == totalPairs * 2) {
+                                showGearPopup(gearsEarned)
+                                waitingForNextSet = true
+                            }
+                        } catch (e: Exception) {
+                            Log.e(serviceIdentifier, "Error removing matched cards", e)
+                        }
+                    }, 500)
+                } else {
+                    // Keep rounded corners and just update the drawable's color
+                    draggedDrawable?.setColor(Color.RED)
+                    targetDrawable?.setColor(Color.RED)
+
+                    Toast.makeText(this, "Incorrect Match", Toast.LENGTH_SHORT).show()
+
+                    handler.postDelayed({
+                        draggedDrawable?.setColor(Color.parseColor("#4B89DC"))
+                        targetDrawable?.setColor(Color.parseColor("#4B89DC"))
+                    }, 500)
+                }
+
+                break // stop after first match check
+            }
+        }
+    }
+
+
+    private fun showGearPopup(earned: Int) {
+
+        // Remove the dimmed background when done
+        backgroundView?.let {
+            try {
+                windowManager.removeView(it)
+            } catch (e: Exception) {
+                Log.e(serviceIdentifier, "Error removing background in popup", e)
+            }
+            backgroundView = null
+        }
+
+        val popup = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 48, 48, 48)
+            gravity = Gravity.CENTER
+
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#4B89DC"))
+                cornerRadius = 48f
+            }
+        }
+
+        val title = TextView(this).apply {
+            text = "Vocab Match Completed!"
+            textSize = 26f
+            setTextColor(Color.WHITE)
+            setPadding(0, 0, 0, 24)
+            gravity = Gravity.CENTER
+            pixelFont?.let { typeface = it }
+        }
+
+        val message = TextView(this).apply {
+            text = "You earned $earned gears!"
+            textSize = 20f
+            setTextColor(Color.YELLOW)
+            gravity = Gravity.CENTER
+            pixelFont?.let { typeface = it }
+        }
+
+        val closeButton = Button(this).apply {
+            text = "Continue"
+            pixelFont?.let { typeface = it }
+
+            setOnClickListener {
+                try {
+                    windowManager.removeView(popup)
+                } catch (e: Exception) {
+                    Log.e(serviceIdentifier, "Error removing popup", e)
+                }
+            }
+        }
+
+        popup.addView(title)
+        popup.addView(message)
+        popup.addView(closeButton)
+
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.CENTER
+        }
+
+        try {
+            windowManager.addView(popup, params)
+        } catch (e: Exception) {
+            Log.e(serviceIdentifier, "Error showing popup", e)
+        }
+    }
+
+    private fun addCard(view: View, x: Int, y: Int) {
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            this.x = x
+            this.y = y
+        }
+
+        try {
+            windowManager.addView(view, params)
+            cards.add(view)
+        } catch (e: Exception) {
+            Log.e(serviceIdentifier, "Error adding card", e)
+        }
+    }
+
+    private fun removeAllCards() {
+        for (card in cards) {
+            try {
+                windowManager.removeView(card)
+            } catch (e: Exception) {
+                Log.e(serviceIdentifier, "Error removing card", e)
+            }
+        }
+        cards.clear()
+        matchedCards.clear()
+
+        backgroundView?.let {
+            try {
+                windowManager.removeView(it)
+            } catch (e: Exception) {
+                Log.e(serviceIdentifier, "Error removing background", e)
+            }
+            backgroundView = null
+        }
+
+        waitingForNextSet = true
+    }
+
+    private fun loadGears() {
+        val userId = auth.currentUser?.uid
+        val prefs = if (userId != null) getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE) else sharedPrefs
+        gears = prefs.getInt("gears", 0)
+    }
+
+    private fun saveGears() {
+        val userId = auth.currentUser?.uid
+        val prefs = if (userId != null) getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE) else sharedPrefs
+        prefs.edit().putInt("gears", gears).apply()
+    }
+
+    override fun onDestroy() {
+        timer?.cancel()
+        removeAllCards()
+        Log.d(serviceIdentifier, "Vocab Match Service destroyed")
+        super.onDestroy()
+        //vocabCoroutineJob?.cancel()
+    }
 
     private val samplePythonQuestions = listOf(
         "What are variables used for?" to "To store data",
@@ -181,423 +683,4 @@ class VocabMatchService : Service() {
         "According to the author, should test code follow the same quality standards as production code?" to "Yes, with some specific exceptions for efficiency",
         "What does the author say about the relationship between dirty tests and dirty code?" to "Both B and C"
     )
-
-
-    private val correctMatches = mutableSetOf<String>()
-    private val matchedCards = mutableSetOf<View>()
-    private var intervalMs: Long = 60000L
-    private var timer: Timer? = null
-    private var waitingForNextSet = false
-    private val handler = Handler(Looper.getMainLooper())
-    private var gearsEarned = 0
-    private var totalPairs = 0
-
-    override fun onBind(intent: Intent?): IBinder? = null
-
-    override fun onCreate() {
-        super.onCreate()
-        Log.d(serviceIdentifier, "VocabMatchService created")
-        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-
-        auth = FirebaseAuth.getInstance()
-        sharedPrefs = getSharedPreferences("tldr_prefs", Context.MODE_PRIVATE)
-        loadGears()
-
-        try {
-            pixelFont = resources.getFont(resources.getIdentifier("rainyhearts", "font", packageName))
-            Log.d(serviceIdentifier, "Pixel font loaded successfully")
-        } catch (e: Exception) {
-            Log.e(serviceIdentifier, "Failed to load pixel font", e)
-        }
-    }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        intent ?: return START_NOT_STICKY
-
-        when (intent.action) {
-            "START_SERVICE" -> handleStart(intent)
-            "STOP_SERVICE" -> stopSelf()
-            "SHOW_NOW" -> {
-                Log.d(serviceIdentifier, "SHOW_NOW action received - showing cards immediately")
-                Toast.makeText(this, "Showing VocabMatch cards now", Toast.LENGTH_SHORT).show()
-                refreshCards()
-            }
-        }
-
-        return START_NOT_STICKY
-    }
-
-    private fun handleStart(intent: Intent) {
-        intervalMs = intent.getLongExtra("interval", 60000L)
-        currentTopic = intent.getStringExtra("topic") ?: "Python"
-
-        timer?.cancel()
-        timer = Timer()
-        handler.post { refreshCards() }
-        //startVocabScheduler()
-        startRefreshTimer()
-    }
-
-    private fun formatIntervalForDisplay(intervalMs: Long): String {
-        return when (intervalMs) {
-            60000L -> "1 minute"
-            300000L -> "5 minutes"
-            600000L -> "10 minutes"
-            1800000L -> "30 minutes"
-            3600000L -> "1 hour"
-            7200000L -> "2 hours"
-            else -> "${intervalMs / 60000} minutes"
-        }
-    }
-    private fun startRefreshTimer() {
-        timer?.cancel()
-        timer = Timer()
-        timer?.schedule(object : TimerTask() {
-            override fun run() {
-                Handler(Looper.getMainLooper()).post {
-                    Log.d(serviceIdentifier, "Timer triggered at interval: $intervalMs ms")
-                    if (waitingForNextSet) {
-                        refreshCards()
-                        waitingForNextSet = false
-                    }
-                }
-            }
-        }, intervalMs, intervalMs) // Use the specified interval
-    }
-//    private fun startVocabScheduler() {
-//        vocabCoroutineJob?.cancel()
-//        vocabCoroutineJob = CoroutineScope(Dispatchers.Main).launch {
-//            Toast.makeText(
-//                this@VocabMatchService,
-//                "Vocab Match Activated!",
-//                Toast.LENGTH_SHORT
-//            ).show()
-//
-//            while (isActive) {
-//                if (waitingForNextSet) {
-//                    refreshCards()
-//                    waitingForNextSet = false
-//                }
-//                delay(intervalMs)
-//            }
-//        }
-//    }
-
-    private fun getQuestionsForTopic(): List<Pair<String, String>> {
-        return when (currentTopic) {
-            "Clean Code" -> cleanCodeQuestions
-            else -> samplePythonQuestions
-        }
-    }
-
-    private fun refreshCards() {
-        removeAllCards()
-        correctMatches.clear()
-        matchedCards.clear()
-        gearsEarned = 0
-
-        val questionList = getQuestionsForTopic()
-        val shuffled = questionList.shuffled().take(4)
-        val questions = shuffled.map { it.first }
-        val answers = shuffled.map { it.second }
-        val allItems = (questions + answers).shuffled()
-        val screenWidth = resources.displayMetrics.widthPixels
-
-        totalPairs = shuffled.size
-
-        allItems.forEachIndexed { index, label ->
-            val card = createCard(label)
-            val isLeft = index % 2 == 0
-            val x = if (isLeft) screenWidth / 10 else screenWidth * 6 / 10
-            val y = 300 + (index * 200) + if (isLeft) -50 else 50
-            addCard(card, x, y)
-        }
-
-        cardPairs.clear()
-        shuffled.forEach { (q, a) -> cardPairs[q] = a }
-
-        showClearButton()
-    }
-
-    private fun showClearButton() {
-        val button = Button(this).apply {
-            text = "Clear"
-            textSize = 8f
-            setPadding(8, 4, 8, 4)
-
-            // Apply pixel font if available
-            pixelFont?.let { typeface = it }
-
-            setOnClickListener {
-                removeAllCards()
-                Toast.makeText(this@VocabMatchService, "Cards cleared", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.BOTTOM or Gravity.END
-            x = 30
-            y = 30
-        }
-
-        try {
-            windowManager.addView(button, params)
-            cards.add(button)
-        } catch (e: Exception) {
-            Log.e(serviceIdentifier, "Error showing clear button", e)
-        }
-    }
-
-    private fun createCard(label: String): View {
-        val outerFrame = FrameLayout(this).apply {
-            setBackgroundColor(Color.BLACK)
-            setPadding(6, 6, 6, 6)
-            tag = label
-        }
-
-        val innerFrame = FrameLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#4B89DC"))
-            setPadding(8, 8, 8, 8)
-            id = 1001 // Give it an ID so we can find it later
-        }
-
-        val textView = TextView(this).apply {
-            text = label
-            setTextColor(Color.WHITE)
-            textSize = 16f
-            setPadding(24, 24, 24, 24)
-            gravity = Gravity.CENTER
-
-            // Apply pixel font if available
-            pixelFont?.let { typeface = it }
-        }
-
-        innerFrame.addView(textView)
-        outerFrame.addView(innerFrame)
-
-        val touchListener = object : View.OnTouchListener {
-            private var initialX = 0
-            private var initialY = 0
-            private var initialTouchX = 0f
-            private var initialTouchY = 0f
-
-            override fun onTouch(v: View, event: MotionEvent): Boolean {
-                if (matchedCards.contains(v)) {
-                    return false
-                }
-
-                val params = v.layoutParams as WindowManager.LayoutParams
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        initialX = params.x
-                        initialY = params.y
-                        initialTouchX = event.rawX
-                        initialTouchY = event.rawY
-                        return true
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        params.x = initialX + (event.rawX - initialTouchX).toInt()
-                        params.y = initialY + (event.rawY - initialTouchY).toInt()
-                        windowManager.updateViewLayout(v, params)
-                        return true
-                    }
-                    MotionEvent.ACTION_UP -> {
-                        checkForMatch(v)
-                        return true
-                    }
-                }
-                return false
-            }
-        }
-
-        outerFrame.setOnTouchListener(touchListener)
-        return outerFrame
-    }
-
-    @SuppressLint("ResourceType")
-    private fun checkForMatch(draggedCard: View) {
-        val draggedText = draggedCard.tag as String
-        val draggedParams = draggedCard.layoutParams as WindowManager.LayoutParams
-
-        for (card in cards) {
-            if (card == draggedCard || matchedCards.contains(card)) continue
-
-            val targetParams = card.layoutParams as WindowManager.LayoutParams
-
-            if (abs(draggedParams.x - targetParams.x) < 400 && abs(draggedParams.y - targetParams.y) < 200) {
-                val targetText = card.tag as String
-                val isMatch = cardPairs[draggedText] == targetText || cardPairs[targetText] == draggedText
-
-                if (isMatch) {
-                    correctMatches.add(draggedText)
-                    correctMatches.add(targetText)
-                    matchedCards.add(draggedCard)
-                    matchedCards.add(card)
-                    gearsEarned++
-
-
-                    gears++
-                    saveGears()
-
-                    val draggedInnerFrame = draggedCard.findViewById<FrameLayout>(1001)
-                    val targetInnerFrame = card.findViewById<FrameLayout>(1001)
-
-                    draggedInnerFrame?.setBackgroundColor(Color.GREEN)
-                    targetInnerFrame?.setBackgroundColor(Color.GREEN)
-
-                    Toast.makeText(this, "Correct Match! (+1 Gear)", Toast.LENGTH_SHORT).show()
-
-                    handler.postDelayed({
-                        try {
-                            windowManager.removeView(draggedCard)
-                            windowManager.removeView(card)
-                            cards.remove(draggedCard)
-                            cards.remove(card)
-
-                            if (correctMatches.size == totalPairs * 2) {
-                                showGearPopup(gearsEarned)
-                                waitingForNextSet = true
-                            }
-                        } catch (e: Exception) {
-                            Log.e(serviceIdentifier, "Error removing matched cards", e)
-                        }
-                    }, 500)
-
-                } else {
-                    val draggedInnerFrame = draggedCard.findViewById<FrameLayout>(1001)
-                    val targetInnerFrame = card.findViewById<FrameLayout>(1001)
-
-                    draggedInnerFrame?.setBackgroundColor(Color.RED)
-                    targetInnerFrame?.setBackgroundColor(Color.RED)
-
-                    Toast.makeText(this, "Incorrect Match", Toast.LENGTH_SHORT).show()
-
-                    handler.postDelayed({
-                        draggedInnerFrame?.setBackgroundColor(Color.parseColor("#4B89DC"))
-                        targetInnerFrame?.setBackgroundColor(Color.parseColor("#4B89DC"))
-                    }, 500)
-                }
-                break
-            }
-        }
-    }
-
-    private fun showGearPopup(earned: Int) {
-        val popup = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(48, 48, 48, 48)
-            setBackgroundColor(Color.BLACK)
-            gravity = Gravity.CENTER
-        }
-
-        val title = TextView(this).apply {
-            text = "Vocab Match Completed!"
-            textSize = 26f
-            setTextColor(Color.WHITE)
-            setPadding(0, 0, 0, 24)
-            gravity = Gravity.CENTER
-            pixelFont?.let { typeface = it }
-        }
-
-        val message = TextView(this).apply {
-            text = "You earned $earned gears!"
-            textSize = 20f
-            setTextColor(Color.YELLOW)
-            gravity = Gravity.CENTER
-            pixelFont?.let { typeface = it }
-        }
-
-        val closeButton = Button(this).apply {
-            text = "Continue"
-            pixelFont?.let { typeface = it }
-
-            setOnClickListener {
-                try {
-                    windowManager.removeView(popup)
-                } catch (e: Exception) {
-                    Log.e(serviceIdentifier, "Error removing popup", e)
-                }
-            }
-        }
-
-        popup.addView(title)
-        popup.addView(message)
-        popup.addView(closeButton)
-
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.CENTER
-        }
-
-        try {
-            windowManager.addView(popup, params)
-        } catch (e: Exception) {
-            Log.e(serviceIdentifier, "Error showing popup", e)
-        }
-    }
-
-    private fun addCard(view: View, x: Int, y: Int) {
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            this.x = x
-            this.y = y
-        }
-
-        try {
-            windowManager.addView(view, params)
-            cards.add(view)
-        } catch (e: Exception) {
-            Log.e(serviceIdentifier, "Error adding card", e)
-        }
-    }
-
-    private fun removeAllCards() {
-        for (card in cards) {
-            try {
-                windowManager.removeView(card)
-            } catch (e: Exception) {
-                Log.e(serviceIdentifier, "Error removing card", e)
-            }
-        }
-        cards.clear()
-        matchedCards.clear()
-        waitingForNextSet = true
-    }
-
-    private fun loadGears() {
-        val userId = auth.currentUser?.uid
-        val prefs = if (userId != null) getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE) else sharedPrefs
-        gears = prefs.getInt("gears", 0)
-    }
-
-    private fun saveGears() {
-        val userId = auth.currentUser?.uid
-        val prefs = if (userId != null) getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE) else sharedPrefs
-        prefs.edit().putInt("gears", gears).apply()
-    }
-
-    override fun onDestroy() {
-        timer?.cancel()
-        removeAllCards()
-        Log.d(serviceIdentifier, "Vocab Match Service destroyed")
-        super.onDestroy()
-        //vocabCoroutineJob?.cancel()
-    }
 }
