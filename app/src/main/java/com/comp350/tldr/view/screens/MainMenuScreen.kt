@@ -1,37 +1,60 @@
 package com.comp350.tldr.view.screens
 
-import android.content.Context
 import android.content.Intent
 import android.provider.Settings
+import android.util.Log
 import android.widget.Toast
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import com.comp350.tldr.view.RobotWithCustomization
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import com.comp350.tldr.controller.navigation.NavigationController
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.navigation.NavController
-import com.comp350.tldr.R
+import com.comp350.tldr.controller.navigation.NavigationController
 import com.comp350.tldr.controller.viewmodels.MainMenuViewModel
+import com.comp350.tldr.view.RobotWithCustomization
 import com.comp350.tldr.view.components.PixelBackground
 import com.comp350.tldr.view.theme.AppTheme
 import kotlinx.coroutines.delay
@@ -60,6 +83,24 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
 
     val navigationController = remember { NavigationController(navController) }
 
+    val audioPlayer = ExoPlayer.Builder(navController.context).build()
+    audioPlayer.volume = 0.8f // volume control from 1 is unchanged volume, 0.5 is half volume.
+    var mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/test_sound_a")
+    audioPlayer.setMediaItem(mediaItem)
+    audioPlayer.prepare()
+
+    var audioExit = false
+    // Set up a listener for the STATE_ENDED,
+    // frees resources after completing sound and exiting screen.
+    audioPlayer.addListener(object : Player.Listener {
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_ENDED && audioExit) {
+                Log.d("ExoPlayer", "Main menu Playback finished")
+                audioPlayer.release()
+            }
+        }
+    })
+
     LaunchedEffect(Unit) {
         vm.loadUserData(ctx)
         vm.initStreakManager(ctx)
@@ -82,6 +123,11 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                     options = vm.topics,
                     enabled = !enabled,
                     onSelect = {
+                        mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/click_alt_sound_b")
+                        audioPlayer.setMediaItem(mediaItem)
+                        audioPlayer.prepare() // restart the player
+                        audioPlayer.play()
+                        audioExit = false
                         vm.setTopic(it)
                         topicOpen = false
                     }
@@ -97,6 +143,11 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                     options = vm.activities,
                     enabled = !enabled,
                     onSelect = {
+                        mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/click_alt_sound_c")
+                        audioPlayer.setMediaItem(mediaItem)
+                        audioPlayer.prepare() // restart the player
+                        audioPlayer.play()
+                        audioExit = false
                         vm.setActivity(it)
                         activityOpen = false
                     }
@@ -112,6 +163,11 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                     options = vm.intervals,
                     enabled = !enabled,
                     onSelect = {
+                        mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/click_alt_sound_d")
+                        audioPlayer.setMediaItem(mediaItem)
+                        audioPlayer.prepare() // restart the player
+                        audioPlayer.play()
+                        audioExit = false
                         vm.setInterval(it, ctx)
                         intervalOpen = false
                     }
@@ -129,11 +185,24 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                             Toast.makeText(ctx, "Grant overlay permission for popups", Toast.LENGTH_LONG).show()
                         } else {
                             if (toggled) {
+                                if (activity != "Video") {
+                                    mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/click_alt_sound_e")
+                                    audioPlayer.setMediaItem(mediaItem)
+                                    audioPlayer.prepare() // restart the player
+                                    audioPlayer.play()
+                                    audioExit = false
+                                }
                                 toggleCooldown = true
                                 kotlinx.coroutines.MainScope().launch {
                                     delay(5000)
                                     toggleCooldown = false
                                 }
+                            } else {
+                                mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/click_alt_sound_a")
+                                audioPlayer.setMediaItem(mediaItem)
+                                audioPlayer.prepare() // restart the player
+                                audioPlayer.play()
+                                audioExit = false
                             }
                             vm.togglePopup(toggled, ctx)
                         }
@@ -202,6 +271,11 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                             )
                         },
                         onClick = {
+                            mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/click_sound_d")
+                            audioPlayer.setMediaItem(mediaItem)
+                            audioPlayer.prepare() // restart the player
+                            audioPlayer.play()
+                            audioExit = true
                             profileMenuOpen = false
                             navController.navigate("profile")
                         }
@@ -215,6 +289,11 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                             )
                         },
                         onClick = {
+                            mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/click_sound_a")
+                            audioPlayer.setMediaItem(mediaItem)
+                            audioPlayer.prepare() // restart the player
+                            audioPlayer.play()
+                            audioExit = true
                             profileMenuOpen = false
                             navigationController.navigateToWelcome()
                         }
@@ -513,7 +592,6 @@ fun HelpButton(onClick: () -> Unit) {
 @Composable
 fun TutorialDialog(onDismiss: () -> Unit) {
     var currentStep by remember { mutableStateOf(0) }
-    val totalSteps = 4
 
 
     val tutorialContent = listOf(
