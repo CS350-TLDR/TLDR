@@ -11,15 +11,12 @@ class DailyStreakManager(private val context: Context) {
     fun checkAndUpdateStreak(onComplete: (Int, Int) -> Unit) {
         val userId = auth.currentUser?.uid ?: return
         val userPrefs = context.getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE)
-
         val currentDateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         val lastActivityDate = userPrefs.getString("last_activity_date", "")
         val currentStreak = userPrefs.getInt("current_streak", 0)
-
         val calendar = Calendar.getInstance()
         val yesterday = calendar.apply { add(Calendar.DAY_OF_YEAR, -1) }
         val yesterdayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(yesterday.time)
-
         val editor = userPrefs.edit()
 
         if (lastActivityDate.isNullOrEmpty() || lastActivityDate == currentDateStr) {
@@ -40,7 +37,6 @@ class DailyStreakManager(private val context: Context) {
             editor.putString("last_activity_date", currentDateStr)
             onComplete(1, calculateReward(1))
         }
-
         editor.apply()
     }
 
@@ -57,7 +53,6 @@ class DailyStreakManager(private val context: Context) {
     fun recordActivityStart() {
         val userId = auth.currentUser?.uid ?: return
         val userPrefs = context.getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE)
-
         val currentDateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         val lastActivityDate = userPrefs.getString("last_activity_date", "")
 
