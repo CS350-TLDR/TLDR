@@ -1,38 +1,60 @@
 package com.comp350.tldr.view.screens
 
-import android.content.Context
 import android.content.Intent
 import android.provider.Settings
+import android.util.Log
 import android.widget.Toast
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import com.comp350.tldr.controller.navigation.NavigationController
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.navigation.NavController
-import com.comp350.tldr.R
+import com.comp350.tldr.controller.navigation.NavigationController
 import com.comp350.tldr.controller.viewmodels.MainMenuViewModel
-import com.comp350.tldr.controller.viewmodels.ProfileViewModel
-import com.comp350.tldr.view.screens.ProfileScreen
+import com.comp350.tldr.view.RobotWithCustomization
 import com.comp350.tldr.view.components.PixelBackground
 import com.comp350.tldr.view.theme.AppTheme
 import kotlinx.coroutines.delay
@@ -47,55 +69,52 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
     val enabled by vm.popupEnabled.collectAsState()
     val timeRemaining by vm.timeRemaining.collectAsState()
     val streak by vm.streak.collectAsState()
-
-
     val isWearingSunglasses by vm.isWearingSunglasses.collectAsState()
 
     var toggleCooldown by remember { mutableStateOf(false) }
     var showStreakDialog by remember { mutableStateOf(false) }
     var streakReward by remember { mutableStateOf(0) }
+    var showTutorial by remember { mutableStateOf(false) }
 
     var topicOpen by remember { mutableStateOf(false) }
     var activityOpen by remember { mutableStateOf(false) }
     var intervalOpen by remember { mutableStateOf(false) }
+    var profileMenuOpen by remember { mutableStateOf(false) }
 
-    // This runs every time the screen appears
-    LaunchedEffect(Unit) {
-        // IMPORTANT: Load the latest user data (including sunglasses state)
-        vm.loadUserData(ctx)
+    val navigationController = remember { NavigationController(navController) }
 
-        vm.initStreakManager(ctx)
-        vm.checkDailyStreak(ctx) { reward ->
-            if (reward > 0) {
-                streakReward = reward
-                showStreakDialog = true
+    val audioPlayer = ExoPlayer.Builder(navController.context).build()
+    audioPlayer.volume = 0.8f // volume control from 1 is unchanged volume, 0.5 is half volume.
+    var mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/test_sound_a")
+    audioPlayer.setMediaItem(mediaItem)
+    audioPlayer.prepare()
+
+    var audioExit = false
+    // Set up a listener for the STATE_ENDED,
+    // frees resources after completing sound and exiting screen.
+    audioPlayer.addListener(object : Player.Listener {
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_ENDED && audioExit) {
+                Log.d("ExoPlayer", "Main menu Playback finished")
+                audioPlayer.release()
             }
         }
+    })
+
+    LaunchedEffect(Unit) {
+        vm.loadUserData(ctx)
+        vm.initStreakManager(ctx)
     }
 
     PixelBackground {
         Box(Modifier.fillMaxSize()) {
             Column(
                 Modifier
-                    .padding(top = 8.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
+                    .padding(top = 80.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Replace the original Image with RobotWithCustomization
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    RobotWithCustomization(
-                        isWearingSunglasses = isWearingSunglasses,
-                        size = 160,
-                        sunglassesOffsetY = -16
-                    )
-                }
-
-                Spacer(Modifier.height(16.dp))
-
                 DropdownSelector(
                     label = "Topic",
                     selected = topic,
@@ -104,6 +123,11 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                     options = vm.topics,
                     enabled = !enabled,
                     onSelect = {
+                        mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/click_alt_sound_b")
+                        audioPlayer.setMediaItem(mediaItem)
+                        audioPlayer.prepare() // restart the player
+                        audioPlayer.play()
+                        audioExit = false
                         vm.setTopic(it)
                         topicOpen = false
                     }
@@ -119,6 +143,11 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                     options = vm.activities,
                     enabled = !enabled,
                     onSelect = {
+                        mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/click_alt_sound_c")
+                        audioPlayer.setMediaItem(mediaItem)
+                        audioPlayer.prepare() // restart the player
+                        audioPlayer.play()
+                        audioExit = false
                         vm.setActivity(it)
                         activityOpen = false
                     }
@@ -134,6 +163,11 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                     options = vm.intervals,
                     enabled = !enabled,
                     onSelect = {
+                        mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/click_alt_sound_d")
+                        audioPlayer.setMediaItem(mediaItem)
+                        audioPlayer.prepare() // restart the player
+                        audioPlayer.play()
+                        audioExit = false
                         vm.setInterval(it, ctx)
                         intervalOpen = false
                     }
@@ -151,18 +185,43 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                             Toast.makeText(ctx, "Grant overlay permission for popups", Toast.LENGTH_LONG).show()
                         } else {
                             if (toggled) {
+                                if (activity != "Video") {
+                                    mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/click_alt_sound_e")
+                                    audioPlayer.setMediaItem(mediaItem)
+                                    audioPlayer.prepare() // restart the player
+                                    audioPlayer.play()
+                                    audioExit = false
+                                }
                                 toggleCooldown = true
                                 kotlinx.coroutines.MainScope().launch {
                                     delay(5000)
                                     toggleCooldown = false
                                 }
+                            } else {
+                                mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/click_alt_sound_a")
+                                audioPlayer.setMediaItem(mediaItem)
+                                audioPlayer.prepare() // restart the player
+                                audioPlayer.play()
+                                audioExit = false
                             }
                             vm.togglePopup(toggled, ctx)
                         }
                     }
                 )
 
-                Spacer(Modifier.height(60.dp))
+                if (enabled) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    CountdownTimer(timeRemaining)
+                }
+            }
+
+            // Question mark help button at bottom middle
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp)
+            ) {
+                HelpButton(onClick = { showTutorial = true })
             }
 
             Box(
@@ -173,24 +232,86 @@ fun MainMenuScreen(navController: NavController, vm: MainMenuViewModel = viewMod
                 DailyStreakCounter(streak)
             }
 
-            if (enabled) {
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 16.dp, end = 16.dp)
+                    .zIndex(10f)
+            ) {
                 Box(
+                    contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 16.dp, end = 16.dp)
+                        .size(56.dp)
+                        .background(Color.White, shape = CircleShape)
+                        .clickable {
+                            profileMenuOpen = !profileMenuOpen
+                        }
                 ) {
-                    CountdownTimer(timeRemaining)
+                    RobotWithCustomization(
+                        isWearingSunglasses = isWearingSunglasses,
+                        size = 40,
+                        sunglassesOffsetY = -9
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = profileMenuOpen,
+                    onDismissRequest = { profileMenuOpen = false },
+                    modifier = Modifier
+                        .width(150.dp)
+                        .background(Color.White)
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "Profile",
+                                fontSize = 18.sp,
+                                fontFamily = AppTheme.pixelFontFamily
+                            )
+                        },
+                        onClick = {
+                            mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/click_sound_d")
+                            audioPlayer.setMediaItem(mediaItem)
+                            audioPlayer.prepare() // restart the player
+                            audioPlayer.play()
+                            audioExit = true
+                            profileMenuOpen = false
+                            navController.navigate("profile")
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "Logout",
+                                fontSize = 18.sp,
+                                fontFamily = AppTheme.pixelFontFamily
+                            )
+                        },
+                        onClick = {
+                            mediaItem = MediaItem.fromUri("android.resource://${navController.context.packageName}/raw/click_sound_a")
+                            audioPlayer.setMediaItem(mediaItem)
+                            audioPlayer.prepare() // restart the player
+                            audioPlayer.play()
+                            audioExit = true
+                            profileMenuOpen = false
+                            navigationController.navigateToWelcome()
+                        }
+                    )
                 }
             }
-
-            ProfileButton(navController)
-            LogoutButton(navController)
 
             if (showStreakDialog) {
                 StreakRewardDialog(
                     streak = streak,
                     reward = streakReward,
                     onDismiss = { showStreakDialog = false }
+                )
+            }
+
+            if (showTutorial) {
+                TutorialDialog(
+                    onDismiss = { showTutorial = false }
                 )
             }
         }
@@ -362,11 +483,6 @@ private fun PopupToggle(
                 }
             }
         }
-
-        if (enabled) {
-            Spacer(Modifier.height(8.dp))
-            Text("glhf", fontSize = 18.sp, color = Color.White, fontFamily = AppTheme.pixelFontFamily)
-        }
     }
 }
 
@@ -455,64 +571,258 @@ private fun CountdownTimer(timeRemaining: Long) {
 }
 
 @Composable
-private fun ProfileButton(navController: NavController) {
+fun HelpButton(onClick: () -> Unit) {
     Box(
-        Modifier
-            .fillMaxSize()
-            .padding(end = 24.dp, bottom = 24.dp),
-        contentAlignment = Alignment.BottomEnd
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(56.dp)
+            .background(Color.White, shape = CircleShape)
+            .clickable { onClick() }
     ) {
+        Text(
+            text = "?",
+            color = AppTheme.darkBlueButtonColor,
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = AppTheme.pixelFontFamily
+        )
+    }
+}
+
+@Composable
+fun TutorialDialog(onDismiss: () -> Unit) {
+    var currentStep by remember { mutableStateOf(0) }
+
+
+    val tutorialContent = listOf(
+        TutorialStep(
+            title = "How to Use The App",
+            description = "Let's get started! This tutorial will show you how to use TLDR.",
+            showTopicSelector = false,
+            showActivitySelector = false,
+            showIntervalSelector = false,
+            showToggle = false
+        ),
+        TutorialStep(
+            title = "Select a Topic",
+            description = "First, choose a topic you want to learn about. Currently we offer Python programming and Clean Code.",
+            showTopicSelector = true,
+            showActivitySelector = false,
+            showIntervalSelector = false,
+            showToggle = false
+        ),
+        TutorialStep(
+            title = "Select an Activity",
+            description = "Next, choose how you want to learn. Try Trivia for questions, Video for short clips, Flashcards for memorization, or VocabMatch for a matching game.",
+            showTopicSelector = false,
+            showActivitySelector = true,
+            showIntervalSelector = false,
+            showToggle = false
+        ),
+        TutorialStep(
+            title = "Set Your Interval",
+            description = "Choose how frequently you want to see learning activities. From once per minute to every 2 hours.",
+            showTopicSelector = false,
+            showActivitySelector = false,
+            showIntervalSelector = true,
+            showToggle = false
+        ),
+        TutorialStep(
+            title = "Switch It On",
+            description = "Toggle the switch to start learning! Activities will pop up at your chosen interval while you use your device.",
+            showTopicSelector = false,
+            showActivitySelector = false,
+            showIntervalSelector = false,
+            showToggle = true
+        )
+    )
+
+    val step = tutorialContent[currentStep]
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF333333),
+        titleContentColor = Color.White,
+        textContentColor = Color.White,
+        title = {
+            Text(
+                text = step.title,
+                fontSize = 24.sp,
+                fontFamily = AppTheme.pixelFontFamily,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = step.description,
+                    fontSize = 18.sp,
+                    fontFamily = AppTheme.pixelFontFamily,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+
+                when {
+                    step.showTopicSelector -> {
+                        DropdownSelectorPreview(
+                            label = "Topic",
+                            selected = "Python",
+                            options = listOf("Python", "Clean Code")
+                        )
+                    }
+                    step.showActivitySelector -> {
+                        DropdownSelectorPreview(
+                            label = "Activity",
+                            selected = "Trivia",
+                            options = listOf("Trivia", "Video", "Flashcards", "VocabMatch", "Random")
+                        )
+                    }
+                    step.showIntervalSelector -> {
+                        DropdownSelectorPreview(
+                            label = "Interval",
+                            selected = "1m",
+                            options = listOf("1m", "5m", "10m", "30m", "1h", "2h")
+                        )
+                    }
+                    step.showToggle -> {
+                        PopupTogglePreview()
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (currentStep > 0) {
+                        Button(
+                            onClick = { currentStep -= 1 },
+                            colors = ButtonDefaults.buttonColors(containerColor = AppTheme.blueButtonColor)
+                        ) {
+                            Text(
+                                "Previous",
+                                fontFamily = AppTheme.pixelFontFamily,
+                                fontSize = 16.sp,
+                                color = Color.White
+                            )
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.width(88.dp))
+                    }
+
+
+                    Text(
+                        text = "${currentStep + 1}/${tutorialContent.size}",
+                        color = Color.White,
+                        fontFamily = AppTheme.pixelFontFamily,
+                        fontSize = 16.sp,
+                        modifier = Modifier.align(Alignment.CenterVertically)
+                    )
+
+                    if (currentStep < tutorialContent.size - 1) {
+                        Button(
+                            onClick = { currentStep += 1 },
+                            colors = ButtonDefaults.buttonColors(containerColor = AppTheme.blueButtonColor)
+                        ) {
+                            Text(
+                                "Next",
+                                fontFamily = AppTheme.pixelFontFamily,
+                                fontSize = 16.sp,
+                                color = Color.White
+                            )
+                        }
+                    } else {
+                        Button(
+                            onClick = onDismiss,
+                            colors = ButtonDefaults.buttonColors(containerColor = AppTheme.blueButtonColor)
+                        ) {
+                            Text(
+                                "Finish",
+                                fontFamily = AppTheme.pixelFontFamily,
+                                fontSize = 16.sp,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { }
+    )
+}
+
+@Composable
+private fun DropdownSelectorPreview(
+    label: String,
+    selected: String,
+    options: List<String>
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            label,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            fontFamily = AppTheme.pixelFontFamily
+        )
+        Spacer(Modifier.height(4.dp))
         Button(
-            onClick = { navController.navigate("profile") },
+            onClick = { },
+            shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.size(width = 120.dp, height = 50.dp)
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
         ) {
             Text(
-                "Profile",
-                fontSize = 22.sp,
+                selected,
+                fontSize = 20.sp,
                 color = AppTheme.darkBlueButtonColor,
-                style = AppTheme.pixelTextStyle.copy(
-                    shadow = AppTheme.pixelTextStyle.shadow?.copy(
-                        blurRadius = 1f,
-                        offset = Offset(2f, 2f)
-                    )
-                )
+                fontFamily = AppTheme.pixelFontFamily
             )
         }
     }
 }
 
 @Composable
-private fun LogoutButton(navController: NavController) {
-    val navigationController = remember { NavigationController(navController) }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(start = 24.dp, bottom = 24.dp),
-        contentAlignment = Alignment.BottomStart,
-        content = {
-            Button(
-                onClick = {
-                    navigationController.navigateToWelcome()
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.size(width = 120.dp, height = 50.dp)
-            ) {
-                Text(
-                    "Logout",
-                    fontSize = 22.sp,
-                    color = AppTheme.darkBlueButtonColor,
-                    style = AppTheme.pixelTextStyle.copy(
-                        shadow = AppTheme.pixelTextStyle.shadow?.copy(
-                            blurRadius = 1f,
-                            offset = Offset(2f, 2f)
-                        )
-                    )
-                )
-            }
-        }
-    )
+private fun PopupTogglePreview() {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(vertical = 8.dp)
+    ) {
+        Text(
+            "Off/On",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            fontFamily = AppTheme.pixelFontFamily
+        )
+        Spacer(Modifier.height(8.dp))
+        Switch(
+            checked = false,
+            onCheckedChange = { },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = Color(0xFF4B89DC),
+                uncheckedThumbColor = Color.LightGray,
+                uncheckedTrackColor = Color(0xFF444444)
+            )
+        )
+    }
 }
+
+data class TutorialStep(
+    val title: String,
+    val description: String,
+    val showTopicSelector: Boolean = false,
+    val showActivitySelector: Boolean = false,
+    val showIntervalSelector: Boolean = false,
+    val showToggle: Boolean = false
+)

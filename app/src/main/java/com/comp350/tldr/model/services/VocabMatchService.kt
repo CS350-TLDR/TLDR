@@ -1,9 +1,11 @@
 package com.comp350.tldr.model.services
 
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Typeface
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -25,6 +27,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.Timer
 import kotlin.math.abs
+import com.google.firebase.auth.FirebaseAuth
 
 class VocabMatchService : Service() {
     private val serviceIdentifier = "VocabMatchService"
@@ -32,8 +35,14 @@ class VocabMatchService : Service() {
     private val cards = mutableListOf<View>()
     private val cardPairs = mutableMapOf<String, String>()
     private var vocabCoroutineJob: Job? = null
+    private var pixelFont: Typeface? = null
+    private var currentTopic = "Python"
 
-    private val sampleQuestions = listOf(
+    private lateinit var auth: FirebaseAuth
+    private lateinit var sharedPrefs: android.content.SharedPreferences
+    private var gears = 0
+
+    private val samplePythonQuestions = listOf(
         "What are variables used for?" to "To store data",
         "What is the correct form to name a variable with multiple words?" to "snake_case",
         "What keyword is used to define a function in Python?" to "def",
@@ -56,9 +65,125 @@ class VocabMatchService : Service() {
         "How do you import a module?" to "import module"
     )
 
+    private val cleanCodeQuestions = listOf(
+        "What does the Boy Scout Rule suggest?" to "Leave the code cleaner than you found it",
+        "What is a common sign of bad code?" to "Duplication",
+        "What does LeBlanc's law state?" to "Later equals never",
+        "Why should functions be small?" to "They're easier to understand, test, and reuse",
+        "What naming convention should be used for variables?" to "Clear, intention-revealing names",
+        "What is a code smell?" to "A surface indication of deeper problems",
+        "What does the Single Responsibility Principle state?" to "A class should have only one reason to change",
+        "What is the problem with comments?" to "They often compensate for unclear code",
+        "What is meant by 'Technical Debt'?" to "Future costs from taking shortcuts now",
+        "What is a side effect?" to "When a function changes something outside its scope",
+        "Why should error handling be separated from normal logic?" to "To improve code clarity and readability",
+        "What is the DRY principle?" to "Don't Repeat Yourself",
+        "Why are meaningful names important?" to "They make code self-documenting",
+        "What is 'primitive obsession'?" to "Overuse of primitive data types instead of custom objects",
+        "What are the benefits of test-driven development?" to "It ensures code works and supports refactoring",
+        "What should a good function do?" to "Do one thing, do it well, do it only",
+        "What is continuous refactoring?" to "Constantly improving code without changing behavior",
+        "What is a good rule for function arguments?" to "Zero to two arguments is ideal",
+        "What makes comments dangerous?" to "They can become outdated while code changes",
+        "Why does code formatting matter?" to "It improves readability and signals professionalism",
+        "What is the primary purpose of a name in code?" to "To reveal the intent of the variable, function, or class",
+        "What should you do if a name requires a comment?" to "Rename it to reveal intent",
+        "What term describes names that suggest false meanings?" to "Disinformation",
+        "Why are single-letter names generally discouraged?" to "They are not searchable or meaningful",
+        "What is a \"noise word\" in a name?" to "A redundant or meaningless addition",
+        "How should classes be named?" to "With noun phrases",
+        "What is the \"Boy Scout Rule\" applied to naming?" to "Leave names cleaner than you found them",
+        "When should single-letter variables be used?" to "Only in small local scopes, like short loops",
+        "What causes mental mapping problems?" to "Names that require extra mental translation",
+        "When should you use problem domain names?" to "When no technical term exists for the concept",
+        "What is the most important rule for writing functions?" to "They should be small",
+        "What does \"Do One Thing\" mean for functions?" to "Focus on a single task or responsibility",
+        "What is the Stepdown Rule in code?" to "Code should read top-to-bottom, reducing abstraction level",
+        "What should replace switch statements across code?" to "Use polymorphism instead",
+        "How many arguments should a function ideally have?" to "One or two at most",
+        "Why are flag arguments considered bad practice?" to "They make code less readable and imply multiple behaviors",
+        "What is a dangerous side effect of a function?" to "Changing unrelated system state without clear intention",
+        "When should you prefer exceptions over error codes?" to "To separate happy path logic from error handling",
+        "What principle does DRY target?" to "Preventing duplicate logic in the codebase",
+        "How does using descriptive function names help?" to "It makes comments unnecessary",
+
+        // Chapter 4: Comments
+        "What does the author say is the main problem with comments?" to "They lie as code evolves",
+        "According to the author, what should you do instead of commenting bad code?" to "Rewrite the code",
+        "What type of comment does the author consider acceptable?" to "Legal comments",
+        "Why does the author say that \"comments are always failures\"?" to "They indicate a failure to express yourself in code",
+        "What should you do instead of using a comment to explain confusing code?" to "Make the code so clear it doesn't need comments",
+        "Which of these is described as a good use for comments?" to "Warning of consequences",
+        "What does the author recommend for TODOs?" to "Keep them updated and scan them regularly",
+        "What problem does the author identify with commented-out code?" to "People are afraid to delete it",
+        "What is a \"noise comment\" according to the author?" to "A comment that states the obvious",
+        "What practice should replace the need for many comments according to Clean Code?" to "Better variable naming",
+
+        // Chapter 5: Formatting
+        "What is the main purpose of code formatting according to the author?" to "Communication",
+        "What is the \"newspaper metaphor\" in code formatting?" to "The highest level concepts should be at the top, with details below",
+        "What does vertical openness between concepts help with?" to "Separating unrelated concepts",
+        "What does the author say about horizontal alignment of variable declarations?" to "It's not useful and may highlight the wrong things",
+        "What rule does the author suggest for indentation?" to "The team should agree on a style and be consistent",
+        "According to the author, how big should source files be?" to "Hundreds of lines at most",
+        "How should related concepts be positioned in code?" to "Vertically close to each other",
+        "What is a good practice for variable declarations?" to "Declare them as close to their usage as possible",
+        "Which style convention does the author present as most important?" to "Consistency across the team",
+        "What does the author say about the rules for formatting?" to "They are too important to ignore and too important to treat religiously",
+
+        // Chapter 6: Objects and Data Structures
+        "What is the key difference between objects and data structures?" to "Objects hide data and expose behavior, data structures expose data",
+        "What is the Law of Demeter also known as?" to "Principle of Least Knowledge",
+        "What is a violation of the Law of Demeter?" to "Calling methods on objects returned from other methods",
+        "What does the author call a class that's half object and half data structure?" to "A hybrid",
+        "According to the chapter, what is a DTO?" to "Data Transfer Object: a class with public variables and no functions",
+        "What is the issue with hybrids according to the author?" to "They're the worst of both worlds - hard to add functions and data structures",
+        "What is data abstraction according to the chapter?" to "Hiding implementation behind an interface",
+        "What does the author say about the complementary nature of objects and data structures?" to "Things easy for OO are hard for procedural code and vice versa",
+        "What is an Active Record according to the chapter?" to "A data structure with navigational methods like save and find",
+        "What is the recommended approach to Active Records?" to "Treat them as data structures and create separate objects with business rules",
+
+        // Chapter 7: Error Handling
+        "What approach does the author prefer for handling errors?" to "Exceptions",
+        "What is the recommended approach to writing try-catch-finally blocks?" to "Write them first",
+        "What does the author say about checked exceptions in Java?" to "They violate the Open/Closed Principle",
+        "What should exceptions provide according to the author?" to "Context to determine source and location of error",
+        "What is the Special Case pattern used for?" to "Eliminating the need for special case code",
+        "According to the author, what should you never return from methods?" to "Null",
+        "What is suggested as an alternative to returning null?" to "Both throwing exceptions and returning special case objects",
+        "What does the author suggest about passing null as a parameter?" to "Avoid passing null whenever possible",
+        "What problem does returning null create according to the chapter?" to "It creates extra work and possible errors for callers",
+        "What approach to error handling increases coupling?" to "Using error codes",
+
+        // Chapter 8: Boundaries
+        "What are 'boundaries' in the context of this chapter?" to "Interfaces between our code and third-party code",
+        "What is the tension described at boundaries?" to "Between providers who want general interfaces and users who want specific interfaces",
+        "What does the author recommend when using third-party APIs like Map?" to "Hide them behind your own interfaces",
+        "What are 'learning tests'?" to "Tests that explore and verify our understanding of third-party APIs",
+        "According to the author, why are learning tests worth the effort?" to "They verify third-party code works as expected and flag changes in new versions",
+        "What pattern is suggested for code that doesn't exist yet?" to "Define the interface you wish you had",
+        "What is an Adapter in the context of boundaries?" to "A design pattern to make incompatible interfaces work together",
+        "What benefit does the author mention about creating your own interface?" to "It gives you more control and provides a convenient seam for testing",
+        "What does the author suggest about clean boundaries?" to "Code at boundaries needs clear separation and tests",
+        "According to the chapter, what's better to depend on?" to "Something you control rather than something you don't",
+
+        // Chapter 9: Unit Tests
+        "According to the author, what enables the '-ilities' (maintainability, flexibility, etc.)?" to "Unit tests",
+        "What does the author say is the most important aspect of clean tests?" to "Readability",
+        "What is the BUILD-OPERATE-CHECK pattern in tests?" to "A pattern where tests are split into sections that build data, operate on it, and check results",
+        "What does the author say about the 'one assert per test' rule?" to "It's a good guideline but not an absolute rule",
+        "What does F.I.R.S.T. stand for in the context of clean tests?" to "Fast, Independent, Repeatable, Self-validating, Timely",
+        "Why should tests be fast according to the chapter?" to "So developers will run them frequently",
+        "What does it mean for tests to be independent?" to "They should not depend on each other",
+        "What is a 'domain-specific testing language'?" to "A set of functions and utilities that make tests more convenient to write and read",
+        "According to the author, should test code follow the same quality standards as production code?" to "Yes, with some specific exceptions for efficiency",
+        "What does the author say about the relationship between dirty tests and dirty code?" to "Both B and C"
+    )
+
+
     private val correctMatches = mutableSetOf<String>()
     private val matchedCards = mutableSetOf<View>()
-    private var intervalMs: Long = 60000L // Default 60 seconds
+    private var intervalMs: Long = 60000L
     private var timer: Timer? = null
     private var waitingForNextSet = false
     private val handler = Handler(Looper.getMainLooper())
@@ -71,6 +196,17 @@ class VocabMatchService : Service() {
         super.onCreate()
         Log.d(serviceIdentifier, "VocabMatchService created")
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+
+        auth = FirebaseAuth.getInstance()
+        sharedPrefs = getSharedPreferences("tldr_prefs", Context.MODE_PRIVATE)
+        loadGears()
+
+        try {
+            pixelFont = resources.getFont(resources.getIdentifier("rainyhearts", "font", packageName))
+            Log.d(serviceIdentifier, "Pixel font loaded successfully")
+        } catch (e: Exception) {
+            Log.e(serviceIdentifier, "Failed to load pixel font", e)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -80,7 +216,6 @@ class VocabMatchService : Service() {
             "START_SERVICE" -> handleStart(intent)
             "STOP_SERVICE" -> stopSelf()
             "SHOW_NOW" -> {
-                // Immediately show cards for testing purposes
                 Log.d(serviceIdentifier, "SHOW_NOW action received - showing cards immediately")
                 Toast.makeText(this, "Showing VocabMatch cards now", Toast.LENGTH_SHORT).show()
                 refreshCards()
@@ -91,25 +226,15 @@ class VocabMatchService : Service() {
     }
 
     private fun handleStart(intent: Intent) {
-        // Get interval from intent (with default value)
         intervalMs = intent.getLongExtra("interval", 60000L)
+        currentTopic = intent.getStringExtra("topic") ?: "Python"
 
-
-
-        // Cancel any existing timers
         timer?.cancel()
         timer = Timer()
-
-        // Show cards immediately (without initial delay)
         handler.post { refreshCards() }
-
-
         startVocabScheduler()
-
-
     }
 
-    // Format interval for display
     private fun formatIntervalForDisplay(intervalMs: Long): String {
         return when (intervalMs) {
             60000L -> "1 minute"
@@ -122,28 +247,31 @@ class VocabMatchService : Service() {
         }
     }
 
-private fun startVocabScheduler() {
-    // Cancel any existing job
-    vocabCoroutineJob?.cancel()
+    private fun startVocabScheduler() {
+        vocabCoroutineJob?.cancel()
+        vocabCoroutineJob = CoroutineScope(Dispatchers.Main).launch {
+            Toast.makeText(
+                this@VocabMatchService,
+                "Vocab Match Activated!",
+                Toast.LENGTH_SHORT
+            ).show()
 
-    // Create a new job
-    vocabCoroutineJob = CoroutineScope(Dispatchers.Main).launch {
-        Toast.makeText(
-            this@VocabMatchService,
-            "Vocab Match Activated!",
-            Toast.LENGTH_SHORT
-        ).show()
-
-        while (isActive) {
-            if (waitingForNextSet) {
-                refreshCards()
-                waitingForNextSet = false
+            while (isActive) {
+                if (waitingForNextSet) {
+                    refreshCards()
+                    waitingForNextSet = false
+                }
+                delay(intervalMs)
             }
-            delay(intervalMs) //Repeat at interval
         }
-
     }
-}
+
+    private fun getQuestionsForTopic(): List<Pair<String, String>> {
+        return when (currentTopic) {
+            "Clean Code" -> cleanCodeQuestions
+            else -> samplePythonQuestions
+        }
+    }
 
     private fun refreshCards() {
         removeAllCards()
@@ -151,7 +279,8 @@ private fun startVocabScheduler() {
         matchedCards.clear()
         gearsEarned = 0
 
-        val shuffled = sampleQuestions.shuffled().take(4)
+        val questionList = getQuestionsForTopic()
+        val shuffled = questionList.shuffled().take(4)
         val questions = shuffled.map { it.first }
         val answers = shuffled.map { it.second }
         val allItems = (questions + answers).shuffled()
@@ -178,6 +307,10 @@ private fun startVocabScheduler() {
             text = "Clear"
             textSize = 8f
             setPadding(8, 4, 8, 4)
+
+            // Apply pixel font if available
+            pixelFont?.let { typeface = it }
+
             setOnClickListener {
                 removeAllCards()
                 Toast.makeText(this@VocabMatchService, "Cards cleared", Toast.LENGTH_SHORT).show()
@@ -205,10 +338,16 @@ private fun startVocabScheduler() {
     }
 
     private fun createCard(label: String): View {
-        val layout = FrameLayout(this).apply {
-            setBackgroundColor(Color.DKGRAY)
-            setPadding(8, 8, 8, 8)
+        val outerFrame = FrameLayout(this).apply {
+            setBackgroundColor(Color.BLACK)
+            setPadding(6, 6, 6, 6)
             tag = label
+        }
+
+        val innerFrame = FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor("#4B89DC"))
+            setPadding(8, 8, 8, 8)
+            id = 1001 // Give it an ID so we can find it later
         }
 
         val textView = TextView(this).apply {
@@ -216,19 +355,14 @@ private fun startVocabScheduler() {
             setTextColor(Color.WHITE)
             textSize = 16f
             setPadding(24, 24, 24, 24)
+            gravity = Gravity.CENTER
+
+            // Apply pixel font if available
+            pixelFont?.let { typeface = it }
         }
 
-        val helperText = TextView(this).apply {
-            text = "Drag to match"
-            setTextColor(Color.LTGRAY)
-            textSize = 12f
-            setPadding(24, 0, 24, 8)
-        }
-
-        val container = FrameLayout(this)
-        container.addView(helperText)
-        container.addView(textView)
-        layout.addView(container)
+        innerFrame.addView(textView)
+        outerFrame.addView(innerFrame)
 
         val touchListener = object : View.OnTouchListener {
             private var initialX = 0
@@ -237,7 +371,6 @@ private fun startVocabScheduler() {
             private var initialTouchY = 0f
 
             override fun onTouch(v: View, event: MotionEvent): Boolean {
-                // Skip processing for matched cards
                 if (matchedCards.contains(v)) {
                     return false
                 }
@@ -266,8 +399,8 @@ private fun startVocabScheduler() {
             }
         }
 
-        layout.setOnTouchListener(touchListener)
-        return layout
+        outerFrame.setOnTouchListener(touchListener)
+        return outerFrame
     }
 
     private fun checkForMatch(draggedCard: View) {
@@ -284,31 +417,31 @@ private fun startVocabScheduler() {
                 val isMatch = cardPairs[draggedText] == targetText || cardPairs[targetText] == draggedText
 
                 if (isMatch) {
-                    // Add both cards to matched sets
                     correctMatches.add(draggedText)
                     correctMatches.add(targetText)
                     matchedCards.add(draggedCard)
                     matchedCards.add(card)
                     gearsEarned++
 
-                    // Show brief flash of green to indicate match
-                    draggedCard.setBackgroundColor(Color.GREEN)
-                    card.setBackgroundColor(Color.GREEN)
+
+                    gears++
+                    saveGears()
+
+                    val draggedInnerFrame = draggedCard.findViewById<FrameLayout>(1001)
+                    val targetInnerFrame = card.findViewById<FrameLayout>(1001)
+
+                    draggedInnerFrame?.setBackgroundColor(Color.GREEN)
+                    targetInnerFrame?.setBackgroundColor(Color.GREEN)
 
                     Toast.makeText(this, "Correct Match! (+1 Gear)", Toast.LENGTH_SHORT).show()
 
-                    // Fade out and remove matched cards
                     handler.postDelayed({
                         try {
-                            // Remove the cards from window manager
                             windowManager.removeView(draggedCard)
                             windowManager.removeView(card)
-
-                            // Remove from active cards list (but keep in matchedCards)
                             cards.remove(draggedCard)
                             cards.remove(card)
 
-                            // Check if all pairs have been matched
                             if (correctMatches.size == totalPairs * 2) {
                                 showGearPopup(gearsEarned)
                                 waitingForNextSet = true
@@ -316,18 +449,20 @@ private fun startVocabScheduler() {
                         } catch (e: Exception) {
                             Log.e(serviceIdentifier, "Error removing matched cards", e)
                         }
-                    }, 500) // Short delay to show the green color before disappearing
+                    }, 500)
 
                 } else {
-                    // Show brief flash of red for incorrect match
-                    draggedCard.setBackgroundColor(Color.RED)
-                    card.setBackgroundColor(Color.RED)
+                    val draggedInnerFrame = draggedCard.findViewById<FrameLayout>(1001)
+                    val targetInnerFrame = card.findViewById<FrameLayout>(1001)
+
+                    draggedInnerFrame?.setBackgroundColor(Color.RED)
+                    targetInnerFrame?.setBackgroundColor(Color.RED)
+
                     Toast.makeText(this, "Incorrect Match", Toast.LENGTH_SHORT).show()
 
-                    // Reset colors after brief delay
                     handler.postDelayed({
-                        draggedCard.setBackgroundColor(Color.DKGRAY)
-                        card.setBackgroundColor(Color.DKGRAY)
+                        draggedInnerFrame?.setBackgroundColor(Color.parseColor("#4B89DC"))
+                        targetInnerFrame?.setBackgroundColor(Color.parseColor("#4B89DC"))
                     }, 500)
                 }
                 break
@@ -349,6 +484,7 @@ private fun startVocabScheduler() {
             setTextColor(Color.WHITE)
             setPadding(0, 0, 0, 24)
             gravity = Gravity.CENTER
+            pixelFont?.let { typeface = it }
         }
 
         val message = TextView(this).apply {
@@ -356,10 +492,13 @@ private fun startVocabScheduler() {
             textSize = 20f
             setTextColor(Color.YELLOW)
             gravity = Gravity.CENTER
+            pixelFont?.let { typeface = it }
         }
 
         val closeButton = Button(this).apply {
             text = "Continue"
+            pixelFont?.let { typeface = it }
+
             setOnClickListener {
                 try {
                     windowManager.removeView(popup)
@@ -422,6 +561,18 @@ private fun startVocabScheduler() {
         cards.clear()
         matchedCards.clear()
         waitingForNextSet = true
+    }
+
+    private fun loadGears() {
+        val userId = auth.currentUser?.uid
+        val prefs = if (userId != null) getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE) else sharedPrefs
+        gears = prefs.getInt("gears", 0)
+    }
+
+    private fun saveGears() {
+        val userId = auth.currentUser?.uid
+        val prefs = if (userId != null) getSharedPreferences("user_${userId}_prefs", Context.MODE_PRIVATE) else sharedPrefs
+        prefs.edit().putInt("gears", gears).apply()
     }
 
     override fun onDestroy() {

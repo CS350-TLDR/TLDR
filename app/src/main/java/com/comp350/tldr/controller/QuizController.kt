@@ -3,7 +3,6 @@ package com.comp350.tldr.controllers
 import android.content.Context
 import android.content.Intent
 import com.comp350.tldr.models.Question
-import com.comp350.tldr.model.services.PopupService
 
 class QuizController(private val context: Context) {
     private val userController = UserController(context)
@@ -656,21 +655,64 @@ class QuizController(private val context: Context) {
 
 
     fun startPopupService(topic: String, activity: String, intervalMs: Long, testMode: Boolean = false) {
-        val intent = Intent(context, PopupService::class.java).apply {
-            putExtra("topic", topic)
-            putExtra("activity", activity)
-            putExtra("interval", intervalMs)
-            putExtra("test_mode", testMode)
-            action = "START_SERVICE"
+        when (activity) {
+            "Trivia" -> {
+                val intent = Intent(context, com.comp350.tldr.model.services.TriviaService::class.java).apply {
+                    putExtra("topic", topic)
+                    putExtra("interval", intervalMs)
+                    putExtra("test_mode", testMode)
+                    action = "START_SERVICE"
+                }
+                context.startService(intent)
+            }
+            "Video" -> {
+                val intent = Intent(context, com.comp350.tldr.model.services.VideoService::class.java).apply {
+                    putExtra("topic", topic)
+                    putExtra("interval", intervalMs)
+                    putExtra("test_mode", testMode)
+                    action = "START_SERVICE"
+                }
+                context.startService(intent)
+            }
+            "Flashcards" -> {
+                val intent = Intent(context, com.comp350.tldr.model.services.FlashcardService::class.java).apply {
+                    putExtra("topic", topic)
+                    putExtra("interval", intervalMs)
+                    putExtra("test_mode", testMode)
+                    action = "START_SERVICE"
+                }
+                context.startService(intent)
+            }
+            "VocabMatch" -> {
+                val intent = Intent(context, com.comp350.tldr.model.services.VocabMatchService::class.java).apply {
+                    putExtra("interval", intervalMs)
+                    putExtra("test_mode", testMode)
+                    action = "START_SERVICE"
+                }
+                context.startService(intent)
+            }
         }
-        context.startService(intent)
     }
 
     fun stopPopupService() {
-        val intent = Intent(context, PopupService::class.java).apply {
+        // Stop all possible services
+        val triviaIntent = Intent(context, com.comp350.tldr.model.services.TriviaService::class.java).apply {
             action = "STOP_SERVICE"
         }
-        context.startService(intent)
+        val videoIntent = Intent(context, com.comp350.tldr.model.services.VideoService::class.java).apply {
+            action = "STOP_SERVICE"
+        }
+        val flashcardIntent = Intent(context, com.comp350.tldr.model.services.FlashcardService::class.java).apply {
+            action = "STOP_SERVICE"
+        }
+        val vocabMatchIntent = Intent(context, com.comp350.tldr.model.services.VocabMatchService::class.java).apply {
+            action = "STOP_SERVICE"
+        }
+
+        context.startService(triviaIntent)
+        context.startService(videoIntent)
+        context.startService(flashcardIntent)
+        context.startService(vocabMatchIntent)
     }
 
     fun awardGears(amount: Int = 1): Boolean {

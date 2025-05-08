@@ -1,12 +1,10 @@
 package com.comp350.tldr.controller.viewmodels
 
 import android.content.Context
-import android.content.SharedPreferences
+import android.content.Intent
 import android.os.CountDownTimer
 import android.os.Handler
 import android.util.Log
-import android.content.Intent
-import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import com.comp350.tldr.controllers.QuizController
 import com.comp350.tldr.controllers.DailyStreakManager
@@ -30,7 +28,6 @@ class MainMenuViewModel : ViewModel() {
     private val _streak = MutableStateFlow(0)
     val streak: StateFlow<Int> = _streak
 
-    // Add state for sunglasses - this is the important part
     private val _isWearingSunglasses = MutableStateFlow(false)
     val isWearingSunglasses: StateFlow<Boolean> = _isWearingSunglasses
 
@@ -42,24 +39,20 @@ class MainMenuViewModel : ViewModel() {
     private val _popupEnabled = MutableStateFlow(false)
     val popupEnabled: StateFlow<Boolean> = _popupEnabled
 
-    val topics = listOf("Python")
-    val activities = listOf("Trivia", "Video", "Flashcards", "VocabMatch")
+    val topics = listOf("Python","Clean Code")
+    val activities = listOf("Trivia", "Video", "Flashcards", "VocabMatch", "Random")
     val intervals = listOf("1m", "5m", "10m", "30m", "1h", "2h")
 
     private var streakManager: DailyStreakManager? = null
 
-    // IMPORTANT: Use the same keys as your ProfileViewModel
     private val PREFS_FILE = "com.comp350.tldr.preferences"
     private val PREFS_SUNGLASSES_UNLOCKED = "sunglasses_unlocked"
     private val PREFS_WEARING_SUNGLASSES = "wearing_sunglasses"
 
-    // This loads sunglasses state from SharedPreferences
     fun loadUserData(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
         _hasUnlockedSunglasses.value = prefs.getBoolean(PREFS_SUNGLASSES_UNLOCKED, false)
         _isWearingSunglasses.value = prefs.getBoolean(PREFS_WEARING_SUNGLASSES, false)
-
-        // Log to help with debugging
         Log.d("MainMenuViewModel", "Loaded sunglasses data - unlocked: ${_hasUnlockedSunglasses.value}, wearing: ${_isWearingSunglasses.value}")
     }
 
@@ -106,6 +99,13 @@ class MainMenuViewModel : ViewModel() {
         if (streakManager == null) {
             initStreakManager(context)
         }
+
+        if (enabled) {
+            checkDailyStreak(context) { reward ->
+
+            }
+        }
+
         val intervalMs = getIntervalMillis(_interval.value)
 
         when (_activity.value) {
@@ -113,11 +113,16 @@ class MainMenuViewModel : ViewModel() {
                 val intent = Intent(context, com.comp350.tldr.model.services.VocabMatchService::class.java)
                 context.stopService(intent)
             }
+            "Random" -> {
+                val intent = Intent(context, com.comp350.tldr.model.services.RandomService::class.java)
+                context.stopService(intent)
+            }
             else -> {
                 val quiz = QuizController(context)
                 quiz.stopPopupService()
             }
         }
+
         Handler().postDelayed({
             if (enabled) {
                 when (_activity.value) {
@@ -125,6 +130,15 @@ class MainMenuViewModel : ViewModel() {
                         val intent = Intent(context, com.comp350.tldr.model.services.VocabMatchService::class.java).apply {
                             action = "START_SERVICE"
                             putExtra("interval", intervalMs)
+                            putExtra("topic", _topic.value)
+                        }
+                        context.startService(intent)
+                    }
+                    "Random" -> {
+                        val intent = Intent(context, com.comp350.tldr.model.services.RandomService::class.java).apply {
+                            action = "START_SERVICE"
+                            putExtra("interval", intervalMs)
+                            putExtra("topic", _topic.value)
                         }
                         context.startService(intent)
                     }
@@ -185,5 +199,4 @@ class MainMenuViewModel : ViewModel() {
         super.onCleared()
         stopCountdownTimer()
     }
-
 }
