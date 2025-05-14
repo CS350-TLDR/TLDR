@@ -9,11 +9,14 @@ Developed in Kotlin in Android Studio using Jetpack Compose framework.
 
 ## How it Works
 1) Select a Topic
-      We offer Python and the book Clean Code
-2) Select an Activity
-      Our activities include Trivia, Flashcards, Videos, Vocabulary Matching, and Randomizer
-3) Select Learning Interval
-      Pick how frequently the pop-ups come up on your phone from every minute to two hours.
+
+   We offer Python and the book Clean Code
+3) Select an Activity
+
+    Our activities include Trivia, Flashcards, Videos, Vocabulary Matching, and Randomizer
+5) Select Learning Interval
+
+   Pick how frequently the pop-ups come up on your phone from every minute to two hours.
 
 ## Additional Features
 Character Customization
