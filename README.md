@@ -15,12 +15,12 @@ Developed in Kotlin in Android Studio using Jetpack Compose framework.
 3) Select Learning Interval
       Pick how frequently the pop-ups come up on your phone from every minute to two hours.
 
-##Additional Features
+## Additional Features
 Character Customization
 Daily Streak Feature
 Sound Effects
 Currency System
 
-##Presentation
+## Presentation
 Our Presentation We Used During Class
 https://www.canva.com/design/DAGi5Yze0y8/qr0UeaQACMMSGAIVoi8hMQ/edit?utm_content=DAGi5Yze0y8&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
