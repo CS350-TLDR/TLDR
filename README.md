@@ -1,5 +1,2 @@
-TLDR
-Marilu Martinez
-Julian Nemo
-Kieron Roe
-Christopher Molina
+## TLDR 
+# A short-form educational application for modern-learning. 
