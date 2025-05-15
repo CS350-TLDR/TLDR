@@ -19,9 +19,13 @@ Developed in Kotlin in Android Studio using Jetpack Compose framework.
    Pick how frequently the pop-ups come up on your phone from every minute to two hours.
 
 ## Additional Features
+
 Character Customization
+
 Daily Streak Feature
+
 Sound Effects
+
 Currency System
 
 ## Presentation
